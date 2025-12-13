@@ -1,0 +1,287 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ================== AUTH ==================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  password      String?
+  
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  forms         Form[]
+  responses     Response[]
+  workspaces    WorkspaceMember[]
+  invitesSent   Invite[]   @relation("InviteCreator")
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ================== WORKSPACE & TEAM ==================
+
+model Workspace {
+  id          String            @id @default(cuid())
+  name        String
+  slug        String            @unique
+  logo        String?
+  
+  // Relations
+  forms       Form[]
+  members     WorkspaceMember[]
+  invites     Invite[]
+  webhooks    Webhook[]
+  
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  role        Role      @default(VIEWER)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model Invite {
+  id          String    @id @default(cuid())
+  email       String
+  role        Role      @default(VIEWER)
+  token       String    @unique
+  expiresAt   DateTime
+  
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String
+  creator     User      @relation("InviteCreator", fields: [creatorId], references: [id])
+  creatorId   String
+  
+  createdAt   DateTime  @default(now())
+
+  @@unique([email, workspaceId])
+}
+
+// ================== FORMS ==================
+
+enum FormStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  ARCHIVED
+}
+
+model Form {
+  id            String     @id @default(cuid())
+  title         String
+  description   String?
+  slug          String     @unique
+  status        FormStatus @default(DRAFT)
+  
+  // Form Structure (stored as JSON)
+  questions     Json       @default("[]")     // Array of Question objects
+  logic         Json       @default("[]")     // Conditional logic rules
+  variables     Json       @default("[]")     // Calculated variables
+  sections      Json       @default("[]")     // Form sections/pages
+  
+  // Welcome & Thank You screens
+  welcomeScreen Json?
+  thankYouScreen Json?
+  
+  // Settings
+  settings      Json       @default("{}")
+  theme         Json       @default("{}")     // Styling configuration
+  
+  // Quiz settings
+  isQuiz        Boolean    @default(false)
+  quizSettings  Json?
+  
+  // Access control
+  accessType    String     @default("public") // public, password, restricted
+  password      String?
+  allowedEmails String[]   @default([])
+  
+  // Response settings
+  singleResponse         Boolean   @default(false)
+  editAfterSubmit        Boolean   @default(false)
+  showProgressBar        Boolean   @default(true)
+  shuffleQuestions       Boolean   @default(false)
+  saveAndContinue        Boolean   @default(false)
+  collectEmail           Boolean   @default(false)
+  responseLimit          Int?
+  closingDate            DateTime?
+  
+  // SEO
+  seoTitle               String?
+  seoDescription         String?
+  ogImage                String?
+  
+  // Ownership
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId   String
+  createdBy     User       @relation(fields: [createdById], references: [id])
+  createdById   String
+  
+  // Relations
+  responses     Response[]
+  
+  // Timestamps
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  publishedAt   DateTime?
+
+  @@index([workspaceId])
+  @@index([status])
+  @@index([createdById])
+}
+
+// ================== RESPONSES ==================
+
+model Response {
+  id            String    @id @default(cuid())
+  form          Form      @relation(fields: [formId], references: [id], onDelete: Cascade)
+  formId        String
+  
+  // Response data
+  data          Json      @default("{}")   // Question answers
+  variables     Json      @default("{}")   // Calculated variable values
+  
+  // Metadata
+  isComplete    Boolean   @default(false)
+  isRead        Boolean   @default(false)
+  
+  // Quiz results
+  score         Float?
+  maxScore      Float?
+  passed        Boolean?
+  
+  // Respondent info
+  respondent    User?     @relation(fields: [respondentId], references: [id])
+  respondentId  String?
+  respondentEmail String?
+  
+  // Device & timing metadata
+  metadata      Json      @default("{}")   // userAgent, ip, location, etc.
+  timeSpent     Int       @default(0)      // seconds
+  
+  // Resume functionality
+  resumeToken   String?   @unique
+  
+  // Tags & notes (for admin)
+  tags          String[]  @default([])
+  notes         String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  completedAt   DateTime?
+  
+  // File uploads
+  files         FileUpload[]
+
+  @@index([formId, createdAt])
+  @@index([formId, isComplete])
+  @@index([respondentId])
+}
+
+model FileUpload {
+  id          String    @id @default(cuid())
+  filename    String
+  url         String
+  size        Int
+  mimeType    String
+  questionId  String    // Which question this upload belongs to
+  
+  response    Response  @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  responseId  String
+  
+  createdAt   DateTime  @default(now())
+
+  @@index([responseId])
+}
+
+// ================== INTEGRATIONS ==================
+
+model Webhook {
+  id          String    @id @default(cuid())
+  name        String
+  url         String
+  secret      String?
+  
+  // Events to trigger
+  events      String[]  @default(["response.created"])
+  
+  // Status
+  isActive    Boolean   @default(true)
+  
+  // Form-specific or workspace-wide
+  formId      String?
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId])
+}
