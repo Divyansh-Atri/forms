@@ -13,7 +13,7 @@ export default function Home() {
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <FileText className="w-4 h-4 text-white" />
               </div>
-              <span className="font-bold text-xl">Forms</span>
+              <span className="font-bold text-xl">Sanjeev Atri</span>
             </div>
             <div className="hidden md:flex items-center gap-8">
               <Link href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -146,7 +146,7 @@ export default function Home() {
               Ready to create your first form?
             </h2>
             <p className="text-lg text-blue-100 mb-8">
-              Join thousands of users who trust Forms for their data collection needs.
+              Join thousands of users who trust Sanjeev Atri for their data collection needs.
             </p>
             <Link href="/signup">
               <Button size="xl" variant="secondary" className="shadow-lg">
@@ -164,10 +164,10 @@ export default function Home() {
             <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-md flex items-center justify-center">
               <FileText className="w-3 h-3 text-white" />
             </div>
-            <span className="font-semibold">Forms</span>
+            <span className="font-semibold">Sanjeev Atri</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Forms. All rights reserved.
+            © {new Date().getFullYear()} Sanjeev Atri. All rights reserved.
           </p>
         </div>
       </footer>

@@ -43,7 +43,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                                 <FileText className="w-4 h-4 text-white" />
                             </div>
-                            <span className="font-bold text-lg hidden sm:block">Forms</span>
+                            <span className="font-bold text-lg hidden sm:block">Sanjeev Atri</span>
                         </Link>
 
                         {/* Workspace selector */}
