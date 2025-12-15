@@ -42,27 +42,33 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 p-4">
+        <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
+            {/* Background Decorations */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2"></div>
+                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-3xl opacity-50 translate-y-1/2 -translate-x-1/2"></div>
+            </div>
+
             <div className="w-full max-w-md animate-scale-in">
                 {/* Logo */}
                 <div className="flex items-center justify-center gap-2 mb-8">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-white" />
+                    <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+                        <FileText className="w-6 h-6 text-primary-foreground" />
                     </div>
-                    <span className="font-bold text-2xl">Sanjeev Atri</span>
+                    <span className="font-bold text-2xl tracking-tight text-foreground">Sanjeev Atri</span>
                 </div>
 
-                <Card className="shadow-xl border-0">
+                <Card className="shadow-2xl shadow-primary/5 border-border/50 backdrop-blur-sm bg-card/80">
                     <CardHeader className="text-center pb-2">
-                        <CardTitle className="text-2xl">Welcome back</CardTitle>
+                        <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
                         <CardDescription>
                             Sign in to your account to continue
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="pt-4">
+                    <CardContent className="pt-6">
                         <form onSubmit={handleSubmit} className="space-y-4">
                             {error && (
-                                <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">
+                                <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm font-medium border border-destructive/20">
                                     {error}
                                 </div>
                             )}
@@ -74,7 +80,7 @@ export default function LoginPage() {
                                         placeholder="Email address"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="pl-10"
+                                        className="pl-10 h-11 bg-background/50"
                                         required
                                     />
                                 </div>
@@ -85,44 +91,44 @@ export default function LoginPage() {
                                         placeholder="Password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="pl-10"
+                                        className="pl-10 h-11 bg-background/50"
                                         required
                                     />
                                 </div>
                             </div>
 
                             <div className="flex items-center justify-between text-sm">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" className="rounded border-gray-300" />
-                                    <span className="text-muted-foreground">Remember me</span>
+                                <label className="flex items-center gap-2 cursor-pointer group">
+                                    <input type="checkbox" className="rounded border-input text-primary focus:ring-primary w-4 h-4" />
+                                    <span className="text-muted-foreground group-hover:text-foreground transition-colors">Remember me</span>
                                 </label>
-                                <Link href="/forgot-password" className="text-primary hover:underline">
+                                <Link href="/forgot-password" className="text-primary hover:underline font-medium">
                                     Forgot password?
                                 </Link>
                             </div>
 
-                            <Button type="submit" className="w-full" size="lg" loading={isLoading}>
+                            <Button type="submit" className="w-full h-11 text-base shadow-lg shadow-primary/20" size="lg" loading={isLoading}>
                                 Sign in <ArrowRight className="w-4 h-4 ml-2" />
                             </Button>
                         </form>
 
-                        <div className="relative my-6">
+                        <div className="relative my-8">
                             <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t"></div>
+                                <div className="w-full border-t border-border"></div>
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                                <span className="bg-card px-2 text-muted-foreground font-medium">Or continue with</span>
                             </div>
                         </div>
-                        
-                        <Button variant="outline" className="w-full" size="lg">
+
+                        <Button variant="outline" className="w-full h-11 text-base hover:bg-secondary/50" size="lg">
                             <Chrome className="w-5 h-5 mr-2" />
                             Google
                         </Button>
 
-                        <p className="text-center text-sm text-muted-foreground mt-6">
+                        <p className="text-center text-sm text-muted-foreground mt-8">
                             Don&apos;t have an account?{" "}
-                            <Link href="/signup" className="text-primary font-medium hover:underline">
+                            <Link href="/signup" className="text-primary font-bold hover:underline">
                                 Sign up
                             </Link>
                         </p>

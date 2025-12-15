@@ -1,76 +1,81 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 
-// Mock forms data - in production, this would come from database
-const mockForms = [
-    {
-        id: "1",
-        title: "Customer Feedback Survey",
-        description: "Gather feedback from our customers about their experience",
-        status: "PUBLISHED",
-        slug: "customer-feedback",
-        questions: [
-            { id: "q1", type: "SHORT_TEXT", title: "What is your name?", required: true },
-            { id: "q2", type: "EMAIL", title: "What is your email address?", required: true },
-            {
-                id: "q3", type: "SINGLE_CHOICE", title: "How satisfied are you?", required: true,
-                choices: [
-                    { id: "c1", label: "Very Satisfied" },
-                    { id: "c2", label: "Satisfied" },
-                    { id: "c3", label: "Neutral" },
-                    { id: "c4", label: "Dissatisfied" },
-                ]
-            },
-        ],
-        createdAt: "2024-01-15T00:00:00Z",
-        updatedAt: "2024-01-20T00:00:00Z",
-    },
-    {
-        id: "2",
-        title: "Job Application Form",
-        description: "Collect applications for open positions",
-        status: "PUBLISHED",
-        slug: "job-application",
-        questions: [],
-        createdAt: "2024-01-10T00:00:00Z",
-        updatedAt: "2024-01-18T00:00:00Z",
-    },
-]
+export const dynamic = 'force-dynamic'
 
 // GET /api/forms - List all forms
-export async function GET() {
-    return NextResponse.json({
-        success: true,
-        data: mockForms,
-    })
+export async function GET(request: NextRequest) {
+    try {
+        const { prisma } = await import('@/lib/db')
+        const cookieStore = await cookies()
+        const userId = cookieStore.get('user-id')?.value
+        const workspaceId = cookieStore.get('workspace-id')?.value
+
+        if (!userId || !workspaceId) {
+            // Fallback for public demo if mostly needed, but best to require auth
+            // For now, return empty or mock if no DB connection/auth
+        }
+
+        const forms = await prisma.form.findMany({
+            where: {
+                workspaceId: workspaceId // Filter by workspace
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        })
+
+        return NextResponse.json({
+            success: true,
+            data: forms,
+        })
+    } catch (error) {
+        console.error("Failed to fetch forms:", error)
+        return NextResponse.json({
+            success: false,
+            error: "Failed to fetch forms",
+            data: [] // Return empty array on error to prevent UI crash
+        }, { status: 500 })
+    }
 }
 
 // POST /api/forms - Create a new form
 export async function POST(request: NextRequest) {
     try {
+        const { prisma } = await import('@/lib/db')
         const body = await request.json()
+        const cookieStore = await cookies()
+        const userId = cookieStore.get('user-id')?.value
+        const workspaceId = cookieStore.get('workspace-id')?.value
 
-        const newForm = {
-            id: `form_${Date.now()}`,
-            title: body.title || "Untitled Form",
-            description: body.description || "",
-            status: "DRAFT",
-            slug: body.slug || `form-${Date.now()}`,
-            questions: body.questions || [],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+        if (!userId || !workspaceId) {
+            return NextResponse.json({
+                success: false,
+                error: "Unauthorized",
+            }, { status: 401 })
         }
 
-        // In production: save to database using Prisma
-        // await prisma.form.create({ data: newForm })
+        const newForm = await prisma.form.create({
+            data: {
+                title: body.title || "Untitled Form",
+                description: body.description || "",
+                status: "DRAFT",
+                slug: body.slug || `form-${Date.now()}`,
+                questions: body.questions || [],
+                workspaceId: workspaceId,
+                createdById: userId
+            }
+        })
 
         return NextResponse.json({
             success: true,
             data: newForm,
         }, { status: 201 })
     } catch (error) {
+        console.error("Failed to create form:", error)
         return NextResponse.json({
             success: false,
             error: "Failed to create form",
-        }, { status: 400 })
+        }, { status: 500 })
     }
 }

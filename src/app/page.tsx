@@ -4,29 +4,29 @@ import { ArrowRight, Zap, BarChart3, Shield, Users, FileText, Sparkles } from "l
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b">
+      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <FileText className="w-4 h-4 text-white" />
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <FileText className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-bold text-xl">Sanjeev Atri</span>
+              <span className="font-bold text-xl tracking-tight">Sanjeev Atri</span>
             </div>
             <div className="hidden md:flex items-center gap-8">
-              <Link href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="#features" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
                 Features
               </Link>
-              <Link href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
                 Pricing
               </Link>
               <Link href="/login">
-                <Button variant="ghost">Log in</Button>
+                <Button variant="ghost" className="hover:bg-primary/5 hover:text-primary">Log in</Button>
               </Link>
               <Link href="/signup">
-                <Button>
+                <Button className="shadow-lg shadow-primary/20">
                   Get Started <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
@@ -36,37 +36,43 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-700 dark:text-blue-300 text-sm font-medium mb-8 animate-fade-in">
+      <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
+        {/* Background Gradients */}
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-3xl opacity-50"></div>
+          <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-3xl opacity-50"></div>
+        </div>
+
+        <div className="max-w-5xl mx-auto text-center relative">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary text-sm font-medium mb-8 animate-fade-in border border-primary/20">
             <Sparkles className="w-4 h-4" />
             The modern form builder you deserve
           </div>
 
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 animate-slide-up">
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 animate-slide-up leading-tight">
             Create forms that
             <span className="gradient-text"> convert</span>
           </h1>
 
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-slide-up leading-relaxed" style={{ animationDelay: '0.1s' }}>
             Build beautiful surveys, quizzes, and forms with our drag-and-drop builder.
             Get insights with powerful analytics and conditional logic.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
             <Link href="/signup">
-              <Button size="xl" className="shadow-lg shadow-primary/25">
+              <Button size="xl" className="h-14 px-8 text-lg shadow-xl shadow-primary/25 rounded-2xl">
                 Start for free <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>
             <Link href="#demo">
-              <Button size="xl" variant="outline">
+              <Button size="xl" variant="outline" className="h-14 px-8 text-lg rounded-2xl border-2 hover:bg-secondary/50">
                 See demo
               </Button>
             </Link>
           </div>
 
-          <p className="text-sm text-muted-foreground mt-6">
+          <p className="text-sm text-muted-foreground mt-8 font-medium">
             No credit card required • Free forever plan
           </p>
         </div>
