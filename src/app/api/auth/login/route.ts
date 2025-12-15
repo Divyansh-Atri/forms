@@ -92,11 +92,11 @@ export async function POST(request: NextRequest) {
         })
 
         return response
-    } catch (error) {
+    } catch (error: any) {
         console.error("Login error:", error)
         return NextResponse.json({
             success: false,
-            error: "Login failed - Database connection might be missing",
+            error: `Login failed: ${error.message || error}`,
         }, { status: 500 })
     }
 }
