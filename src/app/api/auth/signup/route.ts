@@ -35,21 +35,13 @@ export async function POST(request: NextRequest) {
         // const hashedPassword = await bcrypt.hash(password, 10)
         // const user = await prisma.user.create({ data: { name, email, password: hashedPassword } })
 
-        // Mock user creation
-        const newUser = {
-            id: `user_${Date.now()}`,
-            name,
-            email,
-            createdAt: new Date().toISOString(),
-        }
-
+        // Registration is disabled for this single-user instance
         return NextResponse.json({
-            success: true,
-            data: {
-                user: newUser,
-                message: "Account created successfully",
-            },
-        }, { status: 201 })
+            success: false,
+            error: "Registration is disabled. Please log in with your credentials.",
+        }, { status: 403 })
+
+
     } catch (error) {
         return NextResponse.json({
             success: false,

@@ -13,15 +13,22 @@ export async function POST(request: NextRequest) {
             }, { status: 400 })
         }
 
-        // In production: validate against database and create session
-        // const user = await prisma.user.findUnique({ where: { email } })
-        // const valid = await bcrypt.compare(password, user.password)
+        // Hardcoded credentials as requested
+        const ALLOWED_EMAIL = "sanjeevatri81@gmail.com"
+        const ALLOWED_PASSWORD = "Sanjeev@99"
+
+        if (email !== ALLOWED_EMAIL || password !== ALLOWED_PASSWORD) {
+            return NextResponse.json({
+                success: false,
+                error: "Invalid email or password",
+            }, { status: 401 })
+        }
 
         // Mock successful login
         const mockUser = {
             id: "user_1",
             email,
-            name: "Demo User",
+            name: "Sanjeev Atri",
         }
 
         // In production: create JWT or session token

@@ -114,7 +114,7 @@ export default function LoginPage() {
                                 <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
                             </div>
                         </div>
-
+                        
                         <Button variant="outline" className="w-full" size="lg">
                             <Chrome className="w-5 h-5 mr-2" />
                             Google

@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Question, QuestionType } from "@/types"
-import { Star, ChevronDown, Calendar, Upload } from "lucide-react"
+import { Star, ChevronDown, Calendar, Upload, FileText } from "lucide-react"
 
 interface FormPreviewProps {
     form: {
@@ -187,8 +187,8 @@ function QuestionInput({
                                 key={i}
                                 onClick={() => onChange(scaleMin + i)}
                                 className={`flex-1 h-10 rounded-lg border font-medium transition-colors ${value === scaleMin + i
-                                        ? "bg-primary text-white border-primary"
-                                        : "hover:border-primary"
+                                    ? "bg-primary text-white border-primary"
+                                    : "hover:border-primary"
                                     }`}
                             >
                                 {scaleMin + i}
@@ -228,12 +228,12 @@ function QuestionInput({
                                 key={i}
                                 onClick={() => onChange(i)}
                                 className={`flex-1 h-10 rounded-lg border text-sm font-medium transition-colors ${value === i
-                                        ? "bg-primary text-white border-primary"
-                                        : i <= 6
-                                            ? "hover:border-red-400 hover:bg-red-50"
-                                            : i <= 8
-                                                ? "hover:border-yellow-400 hover:bg-yellow-50"
-                                                : "hover:border-green-400 hover:bg-green-50"
+                                    ? "bg-primary text-white border-primary"
+                                    : i <= 6
+                                        ? "hover:border-red-400 hover:bg-red-50"
+                                        : i <= 8
+                                            ? "hover:border-yellow-400 hover:bg-yellow-50"
+                                            : "hover:border-green-400 hover:bg-green-50"
                                     }`}
                             >
                                 {i}
@@ -263,14 +263,70 @@ function QuestionInput({
 
         case QuestionType.FILE_UPLOAD:
             return (
-                <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
-                    <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                        Click to upload or drag and drop
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                        Max {(question as any).maxFileSize || 10}MB
-                    </p>
+                <div className="space-y-4">
+                    {!value ? (
+                        <div
+                            className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary hover:bg-primary/5 transition-all cursor-pointer"
+                            onClick={() => document.getElementById(`file-${question.id}`)?.click()}
+                        >
+                            <input
+                                id={`file-${question.id}`}
+                                type="file"
+                                className="hidden"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0]
+                                    if (file) {
+                                        if (file.size > ((question as any).maxFileSize || 10) * 1024 * 1024) {
+                                            alert(`File size exceeds ${(question as any).maxFileSize || 10}MB limit`)
+                                            return
+                                        }
+                                        const reader = new FileReader()
+                                        reader.onloadend = () => {
+                                            onChange({
+                                                name: file.name,
+                                                type: file.type,
+                                                size: file.size,
+                                                content: reader.result
+                                            })
+                                        }
+                                        reader.readAsDataURL(file)
+                                    }
+                                }}
+                                accept={(question as any).allowedTypes?.join(',')}
+                            />
+                            <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                            <p className="text-sm text-muted-foreground font-medium">
+                                Click to upload or drag and drop
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Max {(question as any).maxFileSize || 10}MB
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between p-4 border rounded-lg bg-background">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                    <FileText className="w-5 h-5 text-primary" />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-medium truncate max-w-[200px]">
+                                        {value.name}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                        {(value.size / 1024 / 1024).toFixed(2)} MB
+                                    </span>
+                                </div>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onChange(null)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            >
+                                Remove
+                            </Button>
+                        </div>
+                    )}
                 </div>
             )
 

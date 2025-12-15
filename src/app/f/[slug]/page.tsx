@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { FileText, CheckCircle, Loader2 } from "lucide-react"
+import { FileText, CheckCircle, Loader2, Upload } from "lucide-react"
 
 interface FormQuestion {
     id: string
@@ -352,6 +352,78 @@ function QuestionInput({
                     onChange={(e) => onChange(e.target.value)}
                     className="text-lg py-6"
                 />
+            )
+
+        case "FILE_UPLOAD":
+            const fileValue = value as { name: string; size: number } | null
+            return (
+                <div className="space-y-4">
+                    {!fileValue ? (
+                        <div
+                            className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary hover:bg-primary/5 transition-all cursor-pointer bg-white dark:bg-gray-800"
+                            onClick={() => document.getElementById(`file-${question.id}`)?.click()}
+                        >
+                            <input
+                                id={`file-${question.id}`}
+                                type="file"
+                                className="hidden"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0]
+                                    if (file) {
+                                        // Max 10MB default
+                                        const maxSize = (question.max || 10) * 1024 * 1024
+                                        if (file.size > maxSize) {
+                                            alert(`File size exceeds ${(question.max || 10)}MB limit`)
+                                            return
+                                        }
+                                        const reader = new FileReader()
+                                        reader.onloadend = () => {
+                                            onChange({
+                                                name: file.name,
+                                                type: file.type,
+                                                size: file.size,
+                                                content: reader.result
+                                            })
+                                        }
+                                        reader.readAsDataURL(file)
+                                    }
+                                }}
+                            // accept={question.allowedTypes?.join(',')} // Not available in FormQuestion interface yet
+                            />
+                            <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                            <p className="text-lg text-muted-foreground font-medium mb-2">
+                                Click to upload or drag and drop
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                Max {(question.max || 10)}MB
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                                    <FileText className="w-6 h-6 text-primary" />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="font-medium truncate max-w-[200px]">
+                                        {fileValue.name}
+                                    </span>
+                                    <span className="text-sm text-muted-foreground">
+                                        {(fileValue.size / 1024 / 1024).toFixed(2)} MB
+                                    </span>
+                                </div>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onChange(null)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 px-4"
+                            >
+                                Remove
+                            </Button>
+                        </div>
+                    )}
+                </div>
             )
 
         default:
