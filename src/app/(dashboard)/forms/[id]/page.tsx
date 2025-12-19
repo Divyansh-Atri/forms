@@ -303,6 +303,31 @@ export default function FormEditorPage() {
                         <Share2 className="w-4 h-4 mr-2" />
                         Share
                     </Button>
+                    {form.status === 'DRAFT' ? (
+                        <Button
+                            size="sm"
+                            variant="default"
+                            onClick={async () => {
+                                setForm({ ...form, status: 'PUBLISHED' })
+                                await handleSave()
+                            }}
+                            disabled={isSaving}
+                        >
+                            Publish
+                        </Button>
+                    ) : (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                                setForm({ ...form, status: 'DRAFT' })
+                                await handleSave()
+                            }}
+                            disabled={isSaving}
+                        >
+                            Unpublish
+                        </Button>
+                    )}
                     <Button
                         size="sm"
                         onClick={handleSave}
