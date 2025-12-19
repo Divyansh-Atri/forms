@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
 
 // POST /api/auth/login - Handle login
 export async function POST(request: NextRequest) {
     try {
+        const { prisma } = await import('@/lib/db')
         const body = await request.json()
         const { email, password } = body
 
@@ -13,41 +15,53 @@ export async function POST(request: NextRequest) {
             }, { status: 400 })
         }
 
-        // Hardcoded credentials as requested
-        const ALLOWED_EMAIL = "sanjeevatri81@gmail.com"
-        const ALLOWED_PASSWORD = "Sanjeev@99"
+        // Find user by email
+        const user = await prisma.user.findUnique({
+            where: { email },
+            include: {
+                workspaces: {
+                    include: {
+                        workspace: true
+                    },
+                    take: 1 // Get first workspace
+                }
+            }
+        })
 
-        if (email !== ALLOWED_EMAIL || password !== ALLOWED_PASSWORD) {
+        if (!user) {
             return NextResponse.json({
                 success: false,
                 error: "Invalid email or password",
             }, { status: 401 })
         }
 
-        // Import Prisma (dynamically to avoid build errors if env var not set yet)
-        const { prisma } = await import("@/lib/db")
+        // Check if user has a password (might be OAuth-only user)
+        if (!user.password) {
+            return NextResponse.json({
+                success: false,
+                error: "Please use Google Sign-In for this account",
+            }, { status: 401 })
+        }
 
-        // Ensure User exists in DB
-        const user = await prisma.user.upsert({
-            where: { email },
-            update: { name: "Sanjeev Atri" },
-            create: {
-                email,
-                name: "Sanjeev Atri",
-                password: "hashed_password_placeholder", // In a real app, hash this
-            },
-        })
+        // Verify password with bcrypt
+        const isPasswordValid = await bcrypt.compare(password, user.password)
 
-        // Ensure Default Workspace exists
-        const workspaceSlug = "sanjeev-workspace"
-        let workspace = await prisma.workspace.findUnique({
-            where: { slug: workspaceSlug },
-        });
+        if (!isPasswordValid) {
+            return NextResponse.json({
+                success: false,
+                error: "Invalid email or password",
+            }, { status: 401 })
+        }
+
+        // Get or create workspace
+        let workspace = user.workspaces[0]?.workspace
 
         if (!workspace) {
+            // Create default workspace if user doesn't have one
+            const workspaceSlug = `${user.name?.toLowerCase().replace(/\s+/g, '-') || 'user'}-workspace-${Date.now()}`
             workspace = await prisma.workspace.create({
                 data: {
-                    name: "Sanjeev's Workspace",
+                    name: `${user.name || 'My'}'s Workspace`,
                     slug: workspaceSlug,
                     members: {
                         create: {
@@ -59,13 +73,18 @@ export async function POST(request: NextRequest) {
             })
         }
 
-        // In production: create JWT or session token
-        const token = `mock_token_${Date.now()}` // You should use proper JWT here in next steps
+        // Create auth token
+        const token = `auth_${Date.now()}_${user.id}`
 
         const response = NextResponse.json({
             success: true,
             data: {
-                user,
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    image: user.image,
+                },
                 workspace,
                 token,
             },
@@ -92,11 +111,11 @@ export async function POST(request: NextRequest) {
         })
 
         return response
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Login error:", error)
         return NextResponse.json({
             success: false,
-            error: `Login failed: ${error.message || error}`,
+            error: "Login failed. Please try again.",
         }, { status: 500 })
     }
 }

@@ -5,81 +5,51 @@ export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ slug: string }> }
 ) {
-    const { slug } = await params
+    try {
+        const { prisma } = await import('@/lib/db')
+        const { slug } = await params
 
-    // Mock form data - in production, fetch from database by slug
-    // Only return public forms that are accepting responses
-    const publicForm = {
-        id: "1",
-        title: "Customer Feedback Survey",
-        description: "We'd love to hear your feedback about our service.",
-        slug,
-        theme: {
-            primaryColor: "#3b82f6",
-            backgroundColor: "#f8fafc",
-        },
-        questions: [
-            {
-                id: "q1",
-                type: "SHORT_TEXT",
-                title: "What is your name?",
-                required: true,
-            },
-            {
-                id: "q2",
-                type: "EMAIL",
-                title: "What is your email address?",
-                required: true,
-            },
-            {
-                id: "q3",
-                type: "SINGLE_CHOICE",
-                title: "How satisfied are you with our service?",
-                required: true,
-                choices: [
-                    { id: "c1", label: "Very Satisfied" },
-                    { id: "c2", label: "Satisfied" },
-                    { id: "c3", label: "Neutral" },
-                    { id: "c4", label: "Dissatisfied" },
-                    { id: "c5", label: "Very Dissatisfied" },
-                ],
-            },
-            {
-                id: "q4",
-                type: "STAR_RATING",
-                title: "Rate your overall experience",
-                required: true,
-                min: 1,
-                max: 5,
-            },
-            {
-                id: "q5",
-                type: "LONG_TEXT",
-                title: "Any additional comments or suggestions?",
-                required: false,
-            },
-        ],
-        settings: {
-            showProgressBar: true,
-            acceptingResponses: true,
-        },
-    }
+        // Fetch form by slug - only return PUBLISHED forms
+        const form = await prisma.form.findUnique({
+            where: { slug },
+            select: {
+                id: true,
+                title: true,
+                description: true,
+                slug: true,
+                status: true,
+                questions: true,
+                theme: true,
+                settings: true,
+                welcomeScreen: true,
+                thankYouScreen: true,
+            }
+        })
 
-    // In production:
-    // const form = await prisma.form.findUnique({
-    //     where: { slug, status: 'PUBLISHED' },
-    //     select: { id, title, description, questions, theme, settings }
-    // })
+        if (!form) {
+            return NextResponse.json({
+                success: false,
+                error: "Form not found",
+            }, { status: 404 })
+        }
 
-    if (!publicForm) {
+        // Only allow access to published forms
+        if (form.status !== 'PUBLISHED') {
+            return NextResponse.json({
+                success: false,
+                error: "This form is not accepting responses",
+            }, { status: 403 })
+        }
+
+        return NextResponse.json({
+            success: true,
+            data: form,
+        })
+    } catch (error) {
+        console.error("Failed to fetch public form:", error)
         return NextResponse.json({
             success: false,
-            error: "Form not found",
-        }, { status: 404 })
+            error: "Failed to load form",
+        }, { status: 500 })
     }
-
-    return NextResponse.json({
-        success: true,
-        data: publicForm,
-    })
 }

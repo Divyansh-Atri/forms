@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
 
 // POST /api/auth/signup - Handle user registration
 export async function POST(request: NextRequest) {
     try {
+        const { prisma } = await import('@/lib/db')
         const body = await request.json()
         const { name, email, password } = body
 
@@ -30,22 +32,89 @@ export async function POST(request: NextRequest) {
             }, { status: 400 })
         }
 
-        // In production: check if user exists and hash password
-        // const existingUser = await prisma.user.findUnique({ where: { email } })
-        // const hashedPassword = await bcrypt.hash(password, 10)
-        // const user = await prisma.user.create({ data: { name, email, password: hashedPassword } })
+        // Check if user already exists
+        const existingUser = await prisma.user.findUnique({
+            where: { email }
+        })
 
-        // Registration is disabled for this single-user instance
-        return NextResponse.json({
-            success: false,
-            error: "Registration is disabled. Please log in with your credentials.",
-        }, { status: 403 })
+        if (existingUser) {
+            return NextResponse.json({
+                success: false,
+                error: "An account with this email already exists",
+            }, { status: 400 })
+        }
 
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10)
 
+        // Create user in database
+        const user = await prisma.user.create({
+            data: {
+                name,
+                email,
+                password: hashedPassword,
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                createdAt: true,
+            }
+        })
+
+        // Create default workspace for user
+        const workspaceSlug = `${name.toLowerCase().replace(/\s+/g, '-')}-workspace-${Date.now()}`
+        const workspace = await prisma.workspace.create({
+            data: {
+                name: `${name}'s Workspace`,
+                slug: workspaceSlug,
+                members: {
+                    create: {
+                        userId: user.id,
+                        role: "OWNER",
+                    }
+                }
+            }
+        })
+
+        // Create auth token (simple for now)
+        const token = `auth_${Date.now()}_${user.id}`
+
+        const response = NextResponse.json({
+            success: true,
+            data: {
+                user,
+                workspace,
+                message: "Account created successfully",
+            },
+        }, { status: 201 })
+
+        // Set auth cookies
+        response.cookies.set('auth-token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7, // 7 days
+        })
+        response.cookies.set('user-id', user.id, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7,
+        })
+        response.cookies.set('workspace-id', workspace.id, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7,
+        })
+
+        return response
     } catch (error) {
+        console.error('Signup error:', error)
         return NextResponse.json({
             success: false,
-            error: "Registration failed",
-        }, { status: 400 })
+            error: "Registration failed. Please try again.",
+        }, { status: 500 })
     }
 }

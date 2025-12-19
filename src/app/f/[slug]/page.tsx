@@ -354,76 +354,14 @@ function QuestionInput({
                 />
             )
 
+        case "fileUpload":
         case "FILE_UPLOAD":
-            const fileValue = value as { name: string; size: number } | null
             return (
-                <div className="space-y-4">
-                    {!fileValue ? (
-                        <div
-                            className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary hover:bg-primary/5 transition-all cursor-pointer bg-white dark:bg-gray-800"
-                            onClick={() => document.getElementById(`file-${question.id}`)?.click()}
-                        >
-                            <input
-                                id={`file-${question.id}`}
-                                type="file"
-                                className="hidden"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0]
-                                    if (file) {
-                                        // Max 10MB default
-                                        const maxSize = (question.max || 10) * 1024 * 1024
-                                        if (file.size > maxSize) {
-                                            alert(`File size exceeds ${(question.max || 10)}MB limit`)
-                                            return
-                                        }
-                                        const reader = new FileReader()
-                                        reader.onloadend = () => {
-                                            onChange({
-                                                name: file.name,
-                                                type: file.type,
-                                                size: file.size,
-                                                content: reader.result
-                                            })
-                                        }
-                                        reader.readAsDataURL(file)
-                                    }
-                                }}
-                            // accept={question.allowedTypes?.join(',')} // Not available in FormQuestion interface yet
-                            />
-                            <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                            <p className="text-lg text-muted-foreground font-medium mb-2">
-                                Click to upload or drag and drop
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                                Max {(question.max || 10)}MB
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="flex items-center justify-between p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                                    <FileText className="w-6 h-6 text-primary" />
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="font-medium truncate max-w-[200px]">
-                                        {fileValue.name}
-                                    </span>
-                                    <span className="text-sm text-muted-foreground">
-                                        {(fileValue.size / 1024 / 1024).toFixed(2)} MB
-                                    </span>
-                                </div>
-                            </div>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => onChange(null)}
-                                className="text-red-500 hover:text-red-700 hover:bg-red-50 px-4"
-                            >
-                                Remove
-                            </Button>
-                        </div>
-                    )}
-                </div>
+                <FileUploadInput
+                    question={question}
+                    value={value as { name: string; size: number; url?: string } | null}
+                    onChange={onChange}
+                />
             )
 
         default:
@@ -436,4 +374,131 @@ function QuestionInput({
                 />
             )
     }
+}
+
+// File Upload Input Component (separate to use hooks properly)
+function FileUploadInput({
+    question,
+    value,
+    onChange,
+}: {
+    question: FormQuestion
+    value: { name: string; size: number; url?: string } | null
+    onChange: (value: unknown) => void
+}) {
+    const [isUploading, setIsUploading] = useState(false)
+    const [uploadError, setUploadError] = useState<string | null>(null)
+
+    const handleFileUpload = async (file: File) => {
+        const maxSizeMB = question.max || 5
+        const maxSize = maxSizeMB * 1024 * 1024
+
+        if (file.size > maxSize) {
+            setUploadError(`File size exceeds ${maxSizeMB}MB limit`)
+            return
+        }
+
+        setIsUploading(true)
+        setUploadError(null)
+
+        try {
+            const formData = new FormData()
+            formData.append('file', file)
+            formData.append('maxSize', String(maxSizeMB))
+
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            })
+
+            const result = await response.json()
+
+            if (result.success) {
+                onChange({
+                    name: result.data.name,
+                    size: result.data.size,
+                    type: result.data.type,
+                    url: result.data.url,
+                })
+            } else {
+                setUploadError(result.error || 'Upload failed')
+            }
+        } catch {
+            setUploadError('Failed to upload file')
+        } finally {
+            setIsUploading(false)
+        }
+    }
+
+    return (
+        <div className="space-y-4">
+            {uploadError && (
+                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm">
+                    {uploadError}
+                </div>
+            )}
+            {!value ? (
+                <div
+                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-all cursor-pointer bg-white dark:bg-gray-800 ${isUploading
+                            ? 'border-primary bg-primary/5'
+                            : 'hover:border-primary hover:bg-primary/5'
+                        }`}
+                    onClick={() => !isUploading && document.getElementById(`file-${question.id}`)?.click()}
+                >
+                    <input
+                        id={`file-${question.id}`}
+                        type="file"
+                        className="hidden"
+                        disabled={isUploading}
+                        onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) handleFileUpload(file)
+                        }}
+                    />
+                    {isUploading ? (
+                        <>
+                            <Loader2 className="w-12 h-12 mx-auto text-primary mb-4 animate-spin" />
+                            <p className="text-lg text-primary font-medium mb-2">
+                                Uploading...
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                            <p className="text-lg text-muted-foreground font-medium mb-2">
+                                Click to upload or drag and drop
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                Max {question.max || 5}MB
+                            </p>
+                        </>
+                    )}
+                </div>
+            ) : (
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                            <CheckCircle className="w-6 h-6 text-green-600" />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="font-medium truncate max-w-[200px]">
+                                {value.name}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                                {(value.size / 1024 / 1024).toFixed(2)} MB • Uploaded
+                            </span>
+                        </div>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onChange(null)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 px-4"
+                    >
+                        Remove
+                    </Button>
+                </div>
+            )}
+        </div>
+    )
 }

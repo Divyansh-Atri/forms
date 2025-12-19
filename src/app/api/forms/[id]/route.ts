@@ -1,46 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 
 // GET /api/forms/[id] - Get a single form
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const { id } = await params
+    try {
+        const { prisma } = await import('@/lib/db')
+        const { id } = await params
+        const cookieStore = await cookies()
+        const userId = cookieStore.get('user-id')?.value
+        const workspaceId = cookieStore.get('workspace-id')?.value
 
-    // Mock form data - in production, fetch from database
-    const form = {
-        id,
-        title: "Customer Feedback Survey",
-        description: "Gather feedback from our customers",
-        status: "PUBLISHED",
-        slug: "customer-feedback",
-        questions: [
-            { id: "q1", type: "SHORT_TEXT", title: "What is your name?", required: true },
-            { id: "q2", type: "EMAIL", title: "What is your email address?", required: true },
-            {
-                id: "q3", type: "SINGLE_CHOICE", title: "How satisfied are you?", required: true,
-                choices: [
-                    { id: "c1", label: "Very Satisfied" },
-                    { id: "c2", label: "Satisfied" },
-                    { id: "c3", label: "Neutral" },
-                ]
-            },
-            { id: "q4", type: "STAR_RATING", title: "Rate your experience", required: true, min: 1, max: 5 },
-            { id: "q5", type: "LONG_TEXT", title: "Any additional comments?", required: false },
-        ],
-        settings: {
-            isPublic: true,
-            acceptingResponses: true,
-            showProgressBar: true,
-        },
-        createdAt: "2024-01-15T00:00:00Z",
-        updatedAt: "2024-01-20T00:00:00Z",
+        if (!userId || !workspaceId) {
+            return NextResponse.json({
+                success: false,
+                error: "Unauthorized",
+            }, { status: 401 })
+        }
+
+        const form = await prisma.form.findUnique({
+            where: { id },
+            include: {
+                _count: {
+                    select: { responses: true }
+                }
+            }
+        })
+
+        if (!form) {
+            return NextResponse.json({
+                success: false,
+                error: "Form not found",
+            }, { status: 404 })
+        }
+
+        // Verify user has access to this form (belongs to their workspace)
+        if (form.workspaceId !== workspaceId) {
+            return NextResponse.json({
+                success: false,
+                error: "Access denied",
+            }, { status: 403 })
+        }
+
+        return NextResponse.json({
+            success: true,
+            data: form,
+        })
+    } catch (error) {
+        console.error("Failed to fetch form:", error)
+        return NextResponse.json({
+            success: false,
+            error: "Failed to fetch form",
+        }, { status: 500 })
     }
-
-    return NextResponse.json({
-        success: true,
-        data: form,
-    })
 }
 
 // PUT /api/forms/[id] - Update a form
@@ -49,25 +63,66 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { prisma } = await import('@/lib/db')
         const body = await request.json()
         const { id } = await params
+        const cookieStore = await cookies()
+        const userId = cookieStore.get('user-id')?.value
+        const workspaceId = cookieStore.get('workspace-id')?.value
 
-        // In production: update in database
-        const updatedForm = {
-            id,
-            ...body,
-            updatedAt: new Date().toISOString(),
+        if (!userId || !workspaceId) {
+            return NextResponse.json({
+                success: false,
+                error: "Unauthorized",
+            }, { status: 401 })
         }
+
+        // Check if form exists
+        const existingForm = await prisma.form.findUnique({
+            where: { id }
+        })
+
+        if (!existingForm) {
+            return NextResponse.json({
+                success: false,
+                error: "Form not found",
+            }, { status: 404 })
+        }
+
+        // Verify user has access to this form
+        if (existingForm.workspaceId !== workspaceId) {
+            return NextResponse.json({
+                success: false,
+                error: "Access denied",
+            }, { status: 403 })
+        }
+
+        // Update form
+        const updatedForm = await prisma.form.update({
+            where: { id },
+            data: {
+                title: body.title,
+                description: body.description,
+                status: body.status,
+                slug: body.slug,
+                questions: body.questions,
+                settings: body.settings,
+                theme: body.theme,
+                welcomeScreen: body.welcomeScreen,
+                thankYouScreen: body.thankYouScreen,
+            }
+        })
 
         return NextResponse.json({
             success: true,
             data: updatedForm,
         })
-    } catch {
+    } catch (error) {
+        console.error("Failed to update form:", error)
         return NextResponse.json({
             success: false,
             error: "Failed to update form",
-        }, { status: 400 })
+        }, { status: 500 })
     }
 }
 
@@ -76,13 +131,54 @@ export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const { id } = await params
+    try {
+        const { prisma } = await import('@/lib/db')
+        const { id } = await params
+        const cookieStore = await cookies()
+        const userId = cookieStore.get('user-id')?.value
+        const workspaceId = cookieStore.get('workspace-id')?.value
 
-    // In production: delete from database
-    // await prisma.form.delete({ where: { id } })
+        if (!userId || !workspaceId) {
+            return NextResponse.json({
+                success: false,
+                error: "Unauthorized",
+            }, { status: 401 })
+        }
 
-    return NextResponse.json({
-        success: true,
-        message: `Form ${id} deleted`,
-    })
+        // Check if form exists
+        const existingForm = await prisma.form.findUnique({
+            where: { id }
+        })
+
+        if (!existingForm) {
+            return NextResponse.json({
+                success: false,
+                error: "Form not found",
+            }, { status: 404 })
+        }
+
+        // Verify user has access to this form
+        if (existingForm.workspaceId !== workspaceId) {
+            return NextResponse.json({
+                success: false,
+                error: "Access denied",
+            }, { status: 403 })
+        }
+
+        // Delete form (will cascade delete responses)
+        await prisma.form.delete({
+            where: { id }
+        })
+
+        return NextResponse.json({
+            success: true,
+            message: "Form deleted successfully",
+        })
+    } catch (error) {
+        console.error("Failed to delete form:", error)
+        return NextResponse.json({
+            success: false,
+            error: "Failed to delete form",
+        }, { status: 500 })
+    }
 }
