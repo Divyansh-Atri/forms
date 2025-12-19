@@ -38,6 +38,68 @@ interface Response {
     }
 }
 
+const renderResponseValue = (key: string, value: unknown) => {
+    // File Upload
+    const isFile = value && typeof value === 'object' && 'url' in value && 'name' in value
+    if (isFile) {
+        return (
+            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex-1">
+                    <p className="font-medium">{(value as any).name}</p>
+                    <p className="text-sm text-muted-foreground">
+                        {((value as any).size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                </div>
+                <a
+                    href={(value as any).url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm"
+                >
+                    Download
+                </a>
+            </div>
+        )
+    }
+
+    // Array (Multiple Choice, Ranking)
+    if (Array.isArray(value)) {
+        return (
+            <ul className="list-disc list-inside space-y-1">
+                {value.map((item: any, i: number) => (
+                    <li key={i} className="text-base">{String(item)}</li>
+                ))}
+            </ul>
+        )
+    }
+
+    // Image (Signature, Image Choice)
+    const isImage = typeof value === 'string' && (
+        value.startsWith('data:image') ||
+        (value.startsWith('http') && /\.(jpg|jpeg|png|gif|webp)$/i.test(value))
+    )
+    if (isImage) {
+        return <img src={value} alt="Response" className="max-w-md rounded-lg border" />
+    }
+
+    // Object (Address, Matrix)
+    if (value && typeof value === 'object') {
+        return (
+            <div className="space-y-2 pl-4 border-l-2">
+                {Object.entries(value as object).map(([k, v]) => (
+                    <div key={k}>
+                        <span className="text-sm text-muted-foreground">{k}: </span>
+                        <span className="text-base">{String(v)}</span>
+                    </div>
+                ))}
+            </div>
+        )
+    }
+
+    // Simple Text/Number/Date
+    return <p className="text-base">{String(value)}</p>
+}
+
 export default function ResponsesPage() {
     const params = useParams()
     const formId = params.id as string
@@ -46,6 +108,7 @@ export default function ResponsesPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedResponses, setSelectedResponses] = useState<string[]>([])
+    const [viewingResponse, setViewingResponse] = useState<Response | null>(null)
 
     useEffect(() => {
         const fetchResponses = async () => {
@@ -270,7 +333,12 @@ export default function ResponsesPage() {
                                     </td>
                                     <td className="p-4">
                                         <div className="flex items-center gap-1">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                onClick={() => setViewingResponse(response)}
+                                            >
                                                 <Eye className="w-4 h-4" />
                                             </Button>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500">
@@ -290,6 +358,31 @@ export default function ResponsesPage() {
                     </div>
                 )}
             </Card>
+
+            {/* Response Detail Modal */}
+            {viewingResponse && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setViewingResponse(null)}>
+                    <Card className="max-w-2xl w-full max-h-[80vh] overflow-y-auto m-4" onClick={(e) => e.stopPropagation()}>
+                        <CardHeader>
+                            <CardTitle>Response Details</CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                                Submitted {new Date(viewingResponse.createdAt).toLocaleString()}
+                            </p>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {Object.entries(viewingResponse.data).map(([key, value]) => (
+                                <div key={key} className="border-b pb-4 last:border-0">
+                                    <p className="font-medium text-sm text-muted-foreground mb-2">{key}</p>
+                                    {renderResponseValue(key, value)}
+                                </div>
+                            ))}
+                            <div className="flex justify-end pt-4">
+                                <Button onClick={() => setViewingResponse(null)}>Close</Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
         </div>
     )
 }
