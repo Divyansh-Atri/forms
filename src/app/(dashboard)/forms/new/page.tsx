@@ -65,11 +65,36 @@ export default function NewFormPage() {
         title: "",
         description: "",
     })
+    const [isCreating, setIsCreating] = useState(false)
 
     const handleCreateForm = async () => {
-        // TODO: Create form via API
-        // For now, redirect to editor
-        router.push("/forms/new-form-id")
+        if (!formData.title.trim()) return
+
+        setIsCreating(true)
+        try {
+            const response = await fetch('/api/forms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: formData.title,
+                    description: formData.description,
+                    slug: formData.title.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(),
+                }),
+            })
+
+            const result = await response.json()
+
+            if (result.success) {
+                router.push(`/forms/${result.data.id}`)
+            } else {
+                alert(`Failed to create form: ${result.error}`)
+            }
+        } catch (error) {
+            console.error('Create form error:', error)
+            alert('Failed to create form. Please try again.')
+        } finally {
+            setIsCreating(false)
+        }
     }
 
     return (
@@ -99,8 +124,8 @@ export default function NewFormPage() {
                                 <Card
                                     key={template.id}
                                     className={`cursor-pointer transition-all ${selectedTemplate === template.id
-                                            ? "ring-2 ring-primary border-primary"
-                                            : "hover:border-gray-300"
+                                        ? "ring-2 ring-primary border-primary"
+                                        : "hover:border-gray-300"
                                         }`}
                                     onClick={() => setSelectedTemplate(template.id)}
                                 >
@@ -163,11 +188,11 @@ export default function NewFormPage() {
                             rows={4}
                         />
                         <div className="flex justify-between pt-4">
-                            <Button variant="outline" onClick={() => setStep("template")}>
+                            <Button variant="outline" onClick={() => setStep("template")} disabled={isCreating}>
                                 Back
                             </Button>
-                            <Button onClick={handleCreateForm} disabled={!formData.title.trim()}>
-                                Create Form
+                            <Button onClick={handleCreateForm} disabled={!formData.title.trim() || isCreating} loading={isCreating}>
+                                {isCreating ? 'Creating...' : 'Create Form'}
                             </Button>
                         </div>
                     </CardContent>

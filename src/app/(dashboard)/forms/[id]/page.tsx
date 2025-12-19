@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect, use } from "react"
+import { useParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -82,10 +83,15 @@ const initialForm = {
 }
 
 export default function FormEditorPage() {
+    const params = useParams()
+    const formId = params.id as string
+
     const [form, setForm] = useState(initialForm)
     const [activeTab, setActiveTab] = useState<"build" | "preview" | "settings">("build")
     const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null)
     const [showShareModal, setShowShareModal] = useState(false)
+    const [isSaving, setIsSaving] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -93,6 +99,60 @@ export default function FormEditorPage() {
             coordinateGetter: sortableKeyboardCoordinates,
         })
     )
+
+    // Fetch form data on mount
+    useEffect(() => {
+        const fetchForm = async () => {
+            try {
+                const response = await fetch(`/api/forms/${formId}`)
+                const result = await response.json()
+
+                if (result.success) {
+                    setForm(result.data)
+                } else {
+                    console.error('Failed to load form:', result.error)
+                }
+            } catch (error) {
+                console.error('Error loading form:', error)
+            } finally {
+                setIsLoading(false)
+            }
+        }
+
+        if (formId) {
+            fetchForm()
+        }
+    }, [formId])
+
+    const handleSave = async () => {
+        setIsSaving(true)
+        try {
+            const response = await fetch(`/api/forms/${form.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: form.title,
+                    description: form.description,
+                    slug: form.slug,
+                    status: form.status,
+                    questions: form.questions,
+                }),
+            })
+
+            const result = await response.json()
+
+            if (result.success) {
+                alert('Form saved successfully!')
+            } else {
+                alert(`Failed to save: ${result.error}`)
+            }
+        } catch (error) {
+            console.error('Save error:', error)
+            alert('Failed to save form. Please try again.')
+        } finally {
+            setIsSaving(false)
+        }
+    }
 
     const handleDragStart = (_event: DragStartEvent) => {
         // Drag tracking handled by dnd-kit
@@ -186,6 +246,17 @@ export default function FormEditorPage() {
 
     const selectedQuestionData = form.questions.find((q) => q.id === selectedQuestion)
 
+    if (isLoading) {
+        return (
+            <div className="h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Loading form...</p>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-950 -m-4 lg:-m-8">
             {/* Top Bar */}
@@ -234,13 +305,12 @@ export default function FormEditorPage() {
                     </Button>
                     <Button
                         size="sm"
-                        onClick={() => {
-                            // Simulate save
-                            alert("Form saved successfully!")
-                        }}
+                        onClick={handleSave}
+                        loading={isSaving}
+                        disabled={isSaving}
                     >
                         <Save className="w-4 h-4 mr-2" />
-                        Save
+                        {isSaving ? 'Saving...' : 'Save'}
                     </Button>
                 </div>
             </header>

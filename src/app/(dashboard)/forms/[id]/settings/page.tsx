@@ -93,24 +93,72 @@ export default function FormSettingsPage({ params }: { params: { id: string } })
 
     const handleSave = async () => {
         setIsSaving(true)
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        setIsSaving(false)
-        setShowSaved(true)
-        setTimeout(() => setShowSaved(false), 2000)
+        try {
+            const response = await fetch(`/api/forms/${params.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: settings.title,
+                    slug: settings.customUrl,
+                    settings: {
+                        isPublic: settings.isPublic,
+                        singleResponse: settings.singleResponse,
+                        collectEmail: settings.collectEmail,
+                        editAfterSubmit: settings.editAfterSubmit,
+                        acceptingResponses: settings.acceptingResponses,
+                        showProgress: settings.showProgress,
+                        shuffleQuestions: settings.shuffleQuestions,
+                    },
+                }),
+            })
+
+            const result = await response.json()
+
+            if (result.success) {
+                setShowSaved(true)
+                setTimeout(() => setShowSaved(false), 2000)
+            } else {
+                alert(`Failed to save: ${result.error}`)
+            }
+        } catch (error) {
+            console.error('Save settings error:', error)
+            alert('Failed to save settings')
+        } finally {
+            setIsSaving(false)
+        }
     }
 
     const handleDeleteResponses = async () => {
-        if (confirm("Are you sure you want to delete all responses? This action cannot be undone.")) {
-            // TODO: Implement delete responses
-            alert("All responses have been deleted.")
+        if (!confirm("Are you sure you want to delete all responses? This action cannot be undone.")) return
+
+        try {
+            // Note: This would need a DELETE /api/responses endpoint
+            // For now, we'll show a message
+            alert("Delete responses functionality requires backend implementation")
+        } catch (error) {
+            console.error('Delete responses error:', error)
+            alert("Failed to delete responses")
         }
     }
 
     const handleDeleteForm = async () => {
-        if (confirm("Are you sure you want to delete this form? This action cannot be undone.")) {
-            // TODO: Implement delete form
-            window.location.href = "/forms"
+        if (!confirm("Are you sure you want to delete this form? This action cannot be undone.")) return
+
+        try {
+            const response = await fetch(`/api/forms/${params.id}`, {
+                method: 'DELETE',
+            })
+
+            const result = await response.json()
+
+            if (result.success) {
+                window.location.href = "/forms"
+            } else {
+                alert(`Failed to delete form: ${result.error}`)
+            }
+        } catch (error) {
+            console.error('Delete form error:', error)
+            alert("Failed to delete form")
         }
     }
 

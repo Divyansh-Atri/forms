@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -20,82 +21,87 @@ import {
     Users,
     TrendingUp,
     BarChart3,
+    Loader2,
 } from "lucide-react"
 
-// Mock response data
-const mockResponses = [
-    {
-        id: "1",
-        data: {
-            q1: "John Doe",
-            q2: "john@example.com",
-            q3: "Very satisfied with the service",
-            q4: 5,
-        },
-        isComplete: true,
-        createdAt: "2024-01-20T10:30:00Z",
-        completedAt: "2024-01-20T10:35:00Z",
-        timeSpent: 300,
-        metadata: { device: "Desktop", browser: "Chrome" },
-    },
-    {
-        id: "2",
-        data: {
-            q1: "Jane Smith",
-            q2: "jane@example.com",
-            q3: "Good experience overall",
-            q4: 4,
-        },
-        isComplete: true,
-        createdAt: "2024-01-19T14:20:00Z",
-        completedAt: "2024-01-19T14:28:00Z",
-        timeSpent: 480,
-        metadata: { device: "Mobile", browser: "Safari" },
-    },
-    {
-        id: "3",
-        data: {
-            q1: "Bob Wilson",
-            q2: "bob@example.com",
-        },
-        isComplete: false,
-        createdAt: "2024-01-18T09:15:00Z",
-        completedAt: null,
-        timeSpent: 120,
-        metadata: { device: "Tablet", browser: "Firefox" },
-    },
-]
+interface Response {
+    id: string
+    data: Record<string, unknown>
+    isComplete: boolean
+    createdAt: string
+    completedAt: string | null
+    timeSpent: number
+    metadata: {
+        device?: string
+        browser?: string
+        [key: string]: unknown
+    }
+}
 
-export default function ResponsesPage({ params }: { params: { id: string } }) {
+export default function ResponsesPage() {
+    const params = useParams()
+    const formId = params.id as string
+
+    const [responses, setResponses] = useState<Response[]>([])
+    const [isLoading, setIsLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedResponses, setSelectedResponses] = useState<string[]>([])
 
-    const filteredResponses = mockResponses.filter((response) =>
+    useEffect(() => {
+        const fetchResponses = async () => {
+            try {
+                const response = await fetch(`/api/responses?formId=${formId}`)
+                const result = await response.json()
+
+                if (result.success) {
+                    setResponses(result.data)
+                }
+            } catch (error) {
+                console.error('Failed to fetch responses:', error)
+            } finally {
+                setIsLoading(false)
+            }
+        }
+
+        if (formId) {
+            fetchResponses()
+        }
+    }, [formId])
+
+    const filteredResponses = responses.filter((response) =>
         Object.values(response.data).some((value) =>
             String(value).toLowerCase().includes(searchQuery.toLowerCase())
         )
     )
 
     const stats = {
-        total: mockResponses.length,
-        complete: mockResponses.filter((r) => r.isComplete).length,
-        avgTime: Math.round(
-            mockResponses.reduce((acc, r) => acc + r.timeSpent, 0) / mockResponses.length / 60
-        ),
+        total: responses.length,
+        complete: responses.filter((r) => r.isComplete).length,
+        avgTime: responses.length > 0
+            ? Math.round(responses.reduce((acc, r) => acc + r.timeSpent, 0) / responses.length / 60)
+            : 0,
+    }
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        )
     }
 
     return (
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center gap-4">
-                <Link href={`/forms/${params.id}`}>
+                <Link href={`/forms/${formId}`}>
                     <Button variant="ghost" size="icon">
                         <ArrowLeft className="w-5 h-5" />
                     </Button>
                 </Link>
                 <div className="flex-1">
                     <h1 className="text-2xl font-bold">Responses</h1>
-                    <p className="text-muted-foreground">Customer Feedback Survey</p>
+                    <p className="text-muted-foreground">View and manage form responses</p>
                 </div>
                 <Button variant="outline">
                     <Download className="w-4 h-4 mr-2" />
