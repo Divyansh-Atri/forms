@@ -20,6 +20,11 @@ export async function GET(request: NextRequest) {
             where: {
                 workspaceId: workspaceId // Filter by workspace
             },
+            include: {
+                _count: {
+                    select: { responses: true }
+                }
+            },
             orderBy: {
                 createdAt: 'desc'
             }
