@@ -158,10 +158,10 @@ export default function ResponsesPage() {
             const form = formResult.data
             const questions = form.questions || []
 
-            // Create question map: id -> title
+            // Create question map: id -> title (without numbers)
             const questionMap = new Map<string, string>()
-            questions.forEach((q: any, index: number) => {
-                questionMap.set(q.id, `Q${index + 1}: ${q.title}`)
+            questions.forEach((q: any) => {
+                questionMap.set(q.id, q.title)
             })
 
             // Get all unique question keys from responses
@@ -170,7 +170,6 @@ export default function ResponsesPage() {
 
             // Map keys to titles
             const headers = [
-                'Status',
                 'Submitted At',
                 ...Array.from(allKeys).map(key => questionMap.get(key) || key)
             ]
@@ -191,7 +190,6 @@ export default function ResponsesPage() {
                 }
 
                 return [
-                    response.isComplete ? 'Complete' : 'Partial',
                     new Date(response.createdAt).toLocaleString(),
                     ...Array.from(allKeys).map(key => formatValue(response.data[key]))
                 ]
@@ -361,15 +359,6 @@ export default function ResponsesPage() {
                                     Respondent
                                 </th>
                                 <th className="text-left p-4 font-medium text-muted-foreground">
-                                    Status
-                                </th>
-                                <th className="text-left p-4 font-medium text-muted-foreground">
-                                    Device
-                                </th>
-                                <th className="text-left p-4 font-medium text-muted-foreground">
-                                    Time Spent
-                                </th>
-                                <th className="text-left p-4 font-medium text-muted-foreground">
                                     Submitted
                                 </th>
                                 <th className="text-left p-4 font-medium text-muted-foreground w-24">
@@ -401,17 +390,6 @@ export default function ResponsesPage() {
                                                 {String(response.data.q2 || "No email")}
                                             </p>
                                         </div>
-                                    </td>
-                                    <td className="p-4">
-                                        <Badge variant={response.isComplete ? "success" : "warning"}>
-                                            {response.isComplete ? "Complete" : "Partial"}
-                                        </Badge>
-                                    </td>
-                                    <td className="p-4 text-muted-foreground">
-                                        {response.metadata.device}
-                                    </td>
-                                    <td className="p-4 text-muted-foreground">
-                                        {Math.round(response.timeSpent / 60)}m {response.timeSpent % 60}s
                                     </td>
                                     <td className="p-4 text-muted-foreground">
                                         {new Date(response.createdAt).toLocaleDateString()}

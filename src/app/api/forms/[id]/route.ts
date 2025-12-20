@@ -165,7 +165,12 @@ export async function DELETE(
             }, { status: 403 })
         }
 
-        // Delete form (will cascade delete responses)
+        // Delete responses first (cascade)
+        await prisma.response.deleteMany({
+            where: { formId: id }
+        })
+
+        // Then delete form
         await prisma.form.delete({
             where: { id }
         })
