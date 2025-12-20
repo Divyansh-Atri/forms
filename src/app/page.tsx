@@ -25,7 +25,7 @@ export default function Home() {
               <Link href="/login">
                 <Button variant="ghost" className="hover:bg-primary/5 hover:text-primary">Log in</Button>
               </Link>
-              <Link href="/signup">
+              <Link href="/login">
                 <Button className="shadow-lg shadow-primary/20">
                   Get Started <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
@@ -60,7 +60,7 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-            <Link href="/signup">
+            <Link href="/login">
               <Button size="xl" className="h-14 px-8 text-lg shadow-xl shadow-primary/25 rounded-2xl">
                 Start for free <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
@@ -154,7 +154,7 @@ export default function Home() {
             <p className="text-lg text-blue-100 mb-8">
               Join thousands of users who trust Sanjeev Atri for their data collection needs.
             </p>
-            <Link href="/signup">
+            <Link href="/login">
               <Button size="xl" variant="secondary" className="shadow-lg">
                 Get started for free <ArrowRight className="w-5 h-5 ml-2" />
               </Button>

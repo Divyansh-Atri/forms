@@ -276,12 +276,12 @@ function QuestionInput({
     onChange: (value: unknown) => void
 }) {
     switch (question.type) {
-        case "SHORT_TEXT":
-        case "EMAIL":
-        case "NUMBER":
+        case "shortText":
+        case "email":
+        case "number":
             return (
                 <Input
-                    type={question.type === "NUMBER" ? "number" : "text"}
+                    type={question.type === "number" ? "number" : "text"}
                     value={(value as string) || ""}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder="Type your answer here..."
@@ -290,7 +290,7 @@ function QuestionInput({
                 />
             )
 
-        case "LONG_TEXT":
+        case "longText":
             return (
                 <Textarea
                     value={(value as string) || ""}
@@ -302,7 +302,7 @@ function QuestionInput({
                 />
             )
 
-        case "SINGLE_CHOICE":
+        case "singleChoice":
             return (
                 <RadioGroup
                     value={(value as string) || ""}
@@ -330,7 +330,7 @@ function QuestionInput({
                 </RadioGroup>
             )
 
-        case "MULTIPLE_CHOICE":
+        case "multipleChoice":
             const selectedValues = (value as string[]) || []
             return (
                 <div className="space-y-3">
@@ -362,7 +362,7 @@ function QuestionInput({
                 </div>
             )
 
-        case "DROPDOWN":
+        case "dropdown":
             return (
                 <select
                     value={(value as string) || ""}
@@ -378,7 +378,7 @@ function QuestionInput({
                 </select>
             )
 
-        case "LINEAR_SCALE":
+        case "linearScale":
             const min = question.min || 1
             const scaleMax = question.max || 10
             return (
@@ -407,7 +407,7 @@ function QuestionInput({
                 </div>
             )
 
-        case "NPS":
+        case "nps":
             return (
                 <div className="space-y-4">
                     <div className="flex items-center justify-between gap-1">
@@ -431,7 +431,7 @@ function QuestionInput({
                 </div>
             )
 
-        case "RANKING":
+        case "ranking":
             const rankItems = (value as string[]) || question.choices?.map(c => c.label) || []
             return (
                 <div className="space-y-2">
@@ -472,7 +472,7 @@ function QuestionInput({
                 </div>
             )
 
-        case "TIME":
+        case "time":
             return (
                 <Input
                     type="time"
@@ -482,7 +482,7 @@ function QuestionInput({
                 />
             )
 
-        case "CONSENT":
+        case "consent":
             return (
                 <div className="flex items-start gap-3 p-4 border-2 rounded-lg">
                     <input
@@ -497,7 +497,7 @@ function QuestionInput({
                 </div>
             )
 
-        case "ADDRESS":
+        case "address":
             const addressValue = (value as Record<string, string>) || {}
             return (
                 <div className="space-y-3">
@@ -538,7 +538,7 @@ function QuestionInput({
                 </div>
             )
 
-        case "SIGNATURE":
+        case "signature":
             return (
                 <div className="space-y-3">
                     <div className="border-2 border-dashed rounded-lg p-8 text-center">
@@ -553,7 +553,7 @@ function QuestionInput({
                 </div>
             )
 
-        case "IMAGE_CHOICE":
+        case "imageChoice":
             return (
                 <div className="grid grid-cols-2 gap-4">
                     {question.choices?.map((choice) => (
@@ -574,7 +574,7 @@ function QuestionInput({
                 </div>
             )
 
-        case "MATRIX_SINGLE":
+        case "matrixSingle":
             const matrixValue = (value as Record<string, string>) || {}
             return (
                 <div className="overflow-x-auto">
@@ -610,7 +610,7 @@ function QuestionInput({
             )
 
         case "fileUpload":
-        case "FILE_UPLOAD":
+        case "fileUpload":
             return (
                 <FileUploadInput
                     question={question}

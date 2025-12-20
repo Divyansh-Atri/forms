@@ -6,13 +6,14 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { FileText, Mail, Lock, ArrowRight, Chrome } from "lucide-react"
+import { FileText, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react"
 
 export default function LoginPage() {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
+    const [showPassword, setShowPassword] = useState(false)
     const [error, setError] = useState("")
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -87,13 +88,20 @@ export default function LoginPage() {
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                                     <Input
-                                        type="password"
+                                        type={showPassword ? "text" : "password"}
                                         placeholder="Password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="pl-10 h-11 bg-background/50"
+                                        className="pl-10 pr-10 h-11 bg-background/50"
                                         required
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    >
+                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
                                 </div>
                             </div>
 
@@ -112,25 +120,8 @@ export default function LoginPage() {
                             </Button>
                         </form>
 
-                        <div className="relative my-8">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-border"></div>
-                            </div>
-                            <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-card px-2 text-muted-foreground font-medium">Or continue with</span>
-                            </div>
-                        </div>
-
-                        <Button variant="outline" className="w-full h-11 text-base hover:bg-secondary/50" size="lg">
-                            <Chrome className="w-5 h-5 mr-2" />
-                            Google
-                        </Button>
-
-                        <p className="text-center text-sm text-muted-foreground mt-8">
-                            Don&apos;t have an account?{" "}
-                            <Link href="/signup" className="text-primary font-bold hover:underline">
-                                Sign up
-                            </Link>
+                        <p className="text-center text-sm text-muted-foreground mt-6">
+                            Contact admin for account access
                         </p>
                     </CardContent>
                 </Card>
