@@ -13,11 +13,16 @@ interface FormQuestion {
     id: string
     type: string
     title: string
-    required: boolean
     description?: string
-    choices?: Array<{ id: string; label: string }>
-    min?: number
+    required?: boolean
+    choices?: Array<{ id: string; label: string; imageUrl?: string }>
     max?: number
+    min?: number
+    minLabel?: string
+    maxLabel?: string
+    consentText?: string
+    rows?: string[]
+    columns?: string[]
 }
 
 interface FormData {
@@ -307,13 +312,13 @@ function QuestionInput({
                     {question.choices?.map((choice) => (
                         <div
                             key={choice.id}
-                            className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${value === choice.id
+                            className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${value === choice.label
                                 ? "border-primary bg-primary/5"
                                 : "border-gray-200 hover:border-gray-300"
                                 }`}
-                            onClick={() => onChange(choice.id)}
+                            onClick={() => onChange(choice.label)}
                         >
-                            <RadioGroupItem value={choice.id} id={choice.id} />
+                            <RadioGroupItem value={choice.label} id={choice.id} />
                             <Label
                                 htmlFor={choice.id}
                                 className="flex-1 cursor-pointer ml-3 text-base"
@@ -325,33 +330,283 @@ function QuestionInput({
                 </RadioGroup>
             )
 
-        case "STAR_RATING":
-            const max = question.max || 5
+        case "MULTIPLE_CHOICE":
+            const selectedValues = (value as string[]) || []
             return (
-                <div className="flex items-center justify-center gap-2">
-                    {Array.from({ length: max }, (_, i) => (
-                        <button
-                            key={i}
-                            onClick={() => onChange(i + 1)}
-                            className={`text-5xl transition-all transform hover:scale-110 ${((value as number) || 0) > i
-                                ? "text-yellow-400 drop-shadow-lg"
-                                : "text-gray-300 hover:text-yellow-300"
+                <div className="space-y-3">
+                    {question.choices?.map((choice) => (
+                        <div
+                            key={choice.id}
+                            className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedValues.includes(choice.label)
+                                ? "border-primary bg-primary/5"
+                                : "border-gray-200 hover:border-gray-300"
                                 }`}
+                            onClick={() => {
+                                const newValues = selectedValues.includes(choice.label)
+                                    ? selectedValues.filter(v => v !== choice.label)
+                                    : [...selectedValues, choice.label]
+                                onChange(newValues)
+                            }}
                         >
-                            ★
-                        </button>
+                            <input
+                                type="checkbox"
+                                checked={selectedValues.includes(choice.label)}
+                                onChange={() => { }}
+                                className="w-5 h-5 rounded"
+                            />
+                            <Label className="flex-1 cursor-pointer ml-3 text-base">
+                                {choice.label}
+                            </Label>
+                        </div>
                     ))}
                 </div>
             )
 
-        case "DATE":
+        case "DROPDOWN":
+            return (
+                <select
+                    value={(value as string) || ""}
+                    onChange={(e) => onChange(e.target.value)}
+                    className="w-full p-4 text-lg rounded-lg border-2 border-gray-200 focus:border-primary focus:outline-none"
+                >
+                    <option value="">Select an option...</option>
+                    {question.choices?.map((choice) => (
+                        <option key={choice.id} value={choice.label}>
+                            {choice.label}
+                        </option>
+                    ))}
+                </select>
+            )
+
+        case "LINEAR_SCALE":
+            const min = question.min || 1
+            const scaleMax = question.max || 10
+            return (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-2">
+                        {Array.from({ length: scaleMax - min + 1 }, (_, i) => {
+                            const num = min + i
+                            return (
+                                <button
+                                    key={num}
+                                    onClick={() => onChange(num)}
+                                    className={`flex-1 py-4 px-2 rounded-lg border-2 font-semibold transition-all ${value === num
+                                        ? "border-primary bg-primary text-white"
+                                        : "border-gray-200 hover:border-gray-300"
+                                        }`}
+                                >
+                                    {num}
+                                </button>
+                            )
+                        })}
+                    </div>
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>{question.minLabel || "Low"}</span>
+                        <span>{question.maxLabel || "High"}</span>
+                    </div>
+                </div>
+            )
+
+        case "NPS":
+            return (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-1">
+                        {Array.from({ length: 11 }, (_, i) => (
+                            <button
+                                key={i}
+                                onClick={() => onChange(i)}
+                                className={`flex-1 py-3 px-1 rounded-lg border-2 font-semibold transition-all text-sm ${value === i
+                                    ? "border-primary bg-primary text-white"
+                                    : "border-gray-200 hover:border-gray-300"
+                                    }`}
+                            >
+                                {i}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Not likely</span>
+                        <span>Very likely</span>
+                    </div>
+                </div>
+            )
+
+        case "RANKING":
+            const rankItems = (value as string[]) || question.choices?.map(c => c.label) || []
+            return (
+                <div className="space-y-2">
+                    {rankItems.map((item, index) => (
+                        <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <span className="font-bold text-lg w-8">{index + 1}</span>
+                            <span className="flex-1">{item}</span>
+                            <div className="flex gap-1">
+                                <button
+                                    onClick={() => {
+                                        if (index > 0) {
+                                            const newItems = [...rankItems]
+                                                ;[newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]]
+                                            onChange(newItems)
+                                        }
+                                    }}
+                                    disabled={index === 0}
+                                    className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-30"
+                                >
+                                    ↑
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (index < rankItems.length - 1) {
+                                            const newItems = [...rankItems]
+                                                ;[newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]]
+                                            onChange(newItems)
+                                        }
+                                    }}
+                                    disabled={index === rankItems.length - 1}
+                                    className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-30"
+                                >
+                                    ↓
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )
+
+        case "TIME":
             return (
                 <Input
-                    type="date"
+                    type="time"
                     value={(value as string) || ""}
                     onChange={(e) => onChange(e.target.value)}
                     className="text-lg py-6"
                 />
+            )
+
+        case "CONSENT":
+            return (
+                <div className="flex items-start gap-3 p-4 border-2 rounded-lg">
+                    <input
+                        type="checkbox"
+                        checked={(value as boolean) || false}
+                        onChange={(e) => onChange(e.target.checked)}
+                        className="w-5 h-5 mt-1 rounded"
+                    />
+                    <Label className="flex-1 cursor-pointer text-base">
+                        {question.consentText || "I agree to the terms and conditions"}
+                    </Label>
+                </div>
+            )
+
+        case "ADDRESS":
+            const addressValue = (value as Record<string, string>) || {}
+            return (
+                <div className="space-y-3">
+                    <Input
+                        placeholder="Street Address"
+                        value={addressValue.street || ""}
+                        onChange={(e) => onChange({ ...addressValue, street: e.target.value })}
+                        className="text-lg"
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                        <Input
+                            placeholder="City"
+                            value={addressValue.city || ""}
+                            onChange={(e) => onChange({ ...addressValue, city: e.target.value })}
+                            className="text-lg"
+                        />
+                        <Input
+                            placeholder="State"
+                            value={addressValue.state || ""}
+                            onChange={(e) => onChange({ ...addressValue, state: e.target.value })}
+                            className="text-lg"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <Input
+                            placeholder="ZIP Code"
+                            value={addressValue.zip || ""}
+                            onChange={(e) => onChange({ ...addressValue, zip: e.target.value })}
+                            className="text-lg"
+                        />
+                        <Input
+                            placeholder="Country"
+                            value={addressValue.country || ""}
+                            onChange={(e) => onChange({ ...addressValue, country: e.target.value })}
+                            className="text-lg"
+                        />
+                    </div>
+                </div>
+            )
+
+        case "SIGNATURE":
+            return (
+                <div className="space-y-3">
+                    <div className="border-2 border-dashed rounded-lg p-8 text-center">
+                        <p className="text-muted-foreground mb-4">Signature feature requires canvas implementation</p>
+                        <Input
+                            placeholder="Type your full name as signature"
+                            value={(value as string) || ""}
+                            onChange={(e) => onChange(e.target.value)}
+                            className="text-lg text-center font-signature"
+                        />
+                    </div>
+                </div>
+            )
+
+        case "IMAGE_CHOICE":
+            return (
+                <div className="grid grid-cols-2 gap-4">
+                    {question.choices?.map((choice) => (
+                        <div
+                            key={choice.id}
+                            className={`cursor-pointer rounded-lg border-4 overflow-hidden transition-all ${value === choice.label
+                                ? "border-primary shadow-lg"
+                                : "border-gray-200 hover:border-gray-300"
+                                }`}
+                            onClick={() => onChange(choice.label)}
+                        >
+                            {choice.imageUrl && (
+                                <img src={choice.imageUrl} alt={choice.label} className="w-full h-40 object-cover" />
+                            )}
+                            <div className="p-3 text-center font-medium">{choice.label}</div>
+                        </div>
+                    ))}
+                </div>
+            )
+
+        case "MATRIX_SINGLE":
+            const matrixValue = (value as Record<string, string>) || {}
+            return (
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr>
+                                <th className="border p-2"></th>
+                                {question.columns?.map((col) => (
+                                    <th key={col} className="border p-2 text-sm">{col}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {question.rows?.map((row) => (
+                                <tr key={row}>
+                                    <td className="border p-2 font-medium">{row}</td>
+                                    {question.columns?.map((col) => (
+                                        <td key={col} className="border p-2 text-center">
+                                            <input
+                                                type="radio"
+                                                name={row}
+                                                checked={matrixValue[row] === col}
+                                                onChange={() => onChange({ ...matrixValue, [row]: col })}
+                                                className="w-5 h-5"
+                                            />
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             )
 
         case "fileUpload":
@@ -440,8 +695,8 @@ function FileUploadInput({
             {!value ? (
                 <div
                     className={`border-2 border-dashed rounded-lg p-8 text-center transition-all cursor-pointer bg-white dark:bg-gray-800 ${isUploading
-                            ? 'border-primary bg-primary/5'
-                            : 'hover:border-primary hover:bg-primary/5'
+                        ? 'border-primary bg-primary/5'
+                        : 'hover:border-primary hover:bg-primary/5'
                         }`}
                     onClick={() => !isUploading && document.getElementById(`file-${question.id}`)?.click()}
                 >

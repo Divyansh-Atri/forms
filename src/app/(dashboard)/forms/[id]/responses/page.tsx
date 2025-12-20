@@ -111,25 +111,81 @@ export default function ResponsesPage() {
     const [viewingResponse, setViewingResponse] = useState<Response | null>(null)
 
     useEffect(() => {
+        let isMounted = true
+
         const fetchResponses = async () => {
             try {
                 const response = await fetch(`/api/responses?formId=${formId}`)
                 const result = await response.json()
 
-                if (result.success) {
+                if (result.success && isMounted) {
                     setResponses(result.data)
                 }
             } catch (error) {
                 console.error('Failed to fetch responses:', error)
             } finally {
-                setIsLoading(false)
+                if (isMounted) {
+                    setIsLoading(false)
+                }
             }
         }
 
         if (formId) {
             fetchResponses()
         }
+
+        return () => {
+            isMounted = false
+        }
     }, [formId])
+
+    const handleExportCSV = () => {
+        if (responses.length === 0) {
+            alert('No responses to export')
+            return
+        }
+
+        // Get all unique question keys
+        const allKeys = new Set<string>()
+        responses.forEach(r => Object.keys(r.data).forEach(k => allKeys.add(k)))
+        const headers = ['ID', 'Status', 'Device', 'Time Spent (s)', 'Submitted At', ...Array.from(allKeys)]
+
+        // Convert responses to CSV rows
+        const rows = responses.map(response => {
+            const formatValue = (value: unknown): string => {
+                if (value === null || value === undefined) return ''
+                if (Array.isArray(value)) return value.join('; ')
+                if (typeof value === 'object') {
+                    if ('url' in value && 'name' in value) return (value as any).name
+                    return JSON.stringify(value)
+                }
+                return String(value)
+            }
+
+            return [
+                response.id,
+                response.isComplete ? 'Complete' : 'Partial',
+                response.metadata?.device || '',
+                response.timeSpent.toString(),
+                new Date(response.createdAt).toLocaleString(),
+                ...Array.from(allKeys).map(key => formatValue(response.data[key]))
+            ]
+        })
+
+        // Create CSV content
+        const csvContent = [
+            headers.map(h => `"${h}"`).join(','),
+            ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        ].join('\n')
+
+        // Download CSV
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `responses-${formId}-${new Date().toISOString().split('T')[0]}.csv`
+        link.click()
+        URL.revokeObjectURL(link.href)
+    }
 
     const filteredResponses = responses.filter((response) =>
         Object.values(response.data).some((value) =>
@@ -166,9 +222,9 @@ export default function ResponsesPage() {
                     <h1 className="text-2xl font-bold">Responses</h1>
                     <p className="text-muted-foreground">View and manage form responses</p>
                 </div>
-                <Button variant="outline">
+                <Button variant="outline" onClick={handleExportCSV}>
                     <Download className="w-4 h-4 mr-2" />
-                    Export
+                    Export CSV
                 </Button>
             </div>
 
