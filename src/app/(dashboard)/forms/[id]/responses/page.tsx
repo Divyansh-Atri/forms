@@ -139,6 +139,26 @@ export default function ResponsesPage() {
         }
     }, [formId])
 
+    const handleDeleteResponse = async (responseId: string) => {
+        if (!confirm("Are you sure you want to delete this response?")) return
+
+        try {
+            const response = await fetch(`/api/responses/${responseId}`, {
+                method: 'DELETE',
+            })
+            const result = await response.json()
+
+            if (result.success) {
+                setResponses(responses.filter(r => r.id !== responseId))
+            } else {
+                alert(`Failed to delete response: ${result.error}`)
+            }
+        } catch (error) {
+            console.error('Delete response error:', error)
+            alert("Failed to delete response")
+        }
+    }
+
     const handleExportCSV = async () => {
         if (responses.length === 0) {
             alert('No responses to export')
@@ -404,7 +424,12 @@ export default function ResponsesPage() {
                                             >
                                                 <Eye className="w-4 h-4" />
                                             </Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-red-500"
+                                                onClick={() => handleDeleteResponse(response.id)}
+                                            >
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
                                         </div>
