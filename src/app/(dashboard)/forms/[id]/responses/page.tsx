@@ -170,10 +170,7 @@ export default function ResponsesPage() {
 
             // Map keys to titles
             const headers = [
-                'Response ID',
                 'Status',
-                'Device',
-                'Time Spent (seconds)',
                 'Submitted At',
                 ...Array.from(allKeys).map(key => questionMap.get(key) || key)
             ]
@@ -194,10 +191,7 @@ export default function ResponsesPage() {
                 }
 
                 return [
-                    response.id,
                     response.isComplete ? 'Complete' : 'Partial',
-                    response.metadata?.device || 'Unknown',
-                    response.timeSpent.toString(),
                     new Date(response.createdAt).toLocaleString(),
                     ...Array.from(allKeys).map(key => formatValue(response.data[key]))
                 ]
