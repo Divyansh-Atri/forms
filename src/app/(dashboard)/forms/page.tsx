@@ -283,7 +283,7 @@ export default function FormsPage() {
                                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                                         <div className="flex items-center gap-1">
                                             <BarChart3 className="w-4 h-4" />
-                                            <span>{form.responses || 0} responses</span>
+                                            <span>{(form as any)._count?.responses || 0} responses</span>
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <Clock className="w-4 h-4" />
