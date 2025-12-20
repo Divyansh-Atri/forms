@@ -263,3 +263,27 @@ a:hover {
   border-color: var(--color-muted-foreground) !important;
   opacity: 0.7;
 }
+
+/* Force button text visibility in dark mode */
+.dark button,
+.dark [role="button"] {
+  color: inherit;
+}
+
+.dark .bg-white,
+.dark .bg-primary {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.dark .bg-white:hover,
+.dark .bg-primary:hover {
+  background-color: #e5e5e5 !important;
+  color: #000000 !important;
+}
+
+/* Ensure outline buttons have visible text */
+.dark .border-input {
+  border-color: #404040 !important;
+  color: #ffffff !important;
+}
