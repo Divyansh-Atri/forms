@@ -67,6 +67,14 @@ export default function FormsPage() {
         }
 
         fetchForms()
+
+        // Refresh when window regains focus (user navigates back)
+        const handleFocus = () => {
+            fetchForms()
+        }
+
+        window.addEventListener('focus', handleFocus)
+        return () => window.removeEventListener('focus', handleFocus)
     }, [])
 
     const filteredForms = forms.filter((form) => {

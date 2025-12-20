@@ -139,52 +139,87 @@ export default function ResponsesPage() {
         }
     }, [formId])
 
-    const handleExportCSV = () => {
+    const handleExportCSV = async () => {
         if (responses.length === 0) {
             alert('No responses to export')
             return
         }
 
-        // Get all unique question keys
-        const allKeys = new Set<string>()
-        responses.forEach(r => Object.keys(r.data).forEach(k => allKeys.add(k)))
-        const headers = ['ID', 'Status', 'Device', 'Time Spent (s)', 'Submitted At', ...Array.from(allKeys)]
+        try {
+            // Fetch form to get question titles
+            const formResponse = await fetch(`/api/forms/${formId}`)
+            const formResult = await formResponse.json()
 
-        // Convert responses to CSV rows
-        const rows = responses.map(response => {
-            const formatValue = (value: unknown): string => {
-                if (value === null || value === undefined) return ''
-                if (Array.isArray(value)) return value.join('; ')
-                if (typeof value === 'object') {
-                    if ('url' in value && 'name' in value) return (value as any).name
-                    return JSON.stringify(value)
-                }
-                return String(value)
+            if (!formResult.success) {
+                alert('Failed to fetch form details')
+                return
             }
 
-            return [
-                response.id,
-                response.isComplete ? 'Complete' : 'Partial',
-                response.metadata?.device || '',
-                response.timeSpent.toString(),
-                new Date(response.createdAt).toLocaleString(),
-                ...Array.from(allKeys).map(key => formatValue(response.data[key]))
+            const form = formResult.data
+            const questions = form.questions || []
+
+            // Create question map: id -> title
+            const questionMap = new Map<string, string>()
+            questions.forEach((q: any, index: number) => {
+                questionMap.set(q.id, `Q${index + 1}: ${q.title}`)
+            })
+
+            // Get all unique question keys from responses
+            const allKeys = new Set<string>()
+            responses.forEach(r => Object.keys(r.data).forEach(k => allKeys.add(k)))
+
+            // Map keys to titles
+            const headers = [
+                'Response ID',
+                'Status',
+                'Device',
+                'Time Spent (seconds)',
+                'Submitted At',
+                ...Array.from(allKeys).map(key => questionMap.get(key) || key)
             ]
-        })
 
-        // Create CSV content
-        const csvContent = [
-            headers.map(h => `"${h}"`).join(','),
-            ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-        ].join('\n')
+            // Convert responses to CSV rows
+            const rows = responses.map(response => {
+                const formatValue = (value: unknown): string => {
+                    if (value === null || value === undefined) return ''
+                    if (Array.isArray(value)) return value.join('; ')
+                    if (typeof value === 'object') {
+                        if ('url' in value && 'name' in value) return (value as any).name
+                        // Format address and other objects nicely
+                        return Object.entries(value)
+                            .map(([k, v]) => `${k}: ${v}`)
+                            .join(', ')
+                    }
+                    return String(value)
+                }
 
-        // Download CSV
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.download = `responses-${formId}-${new Date().toISOString().split('T')[0]}.csv`
-        link.click()
-        URL.revokeObjectURL(link.href)
+                return [
+                    response.id,
+                    response.isComplete ? 'Complete' : 'Partial',
+                    response.metadata?.device || 'Unknown',
+                    response.timeSpent.toString(),
+                    new Date(response.createdAt).toLocaleString(),
+                    ...Array.from(allKeys).map(key => formatValue(response.data[key]))
+                ]
+            })
+
+            // Create CSV content
+            const csvContent = [
+                headers.map(h => `"${h}"`).join(','),
+                ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+            ].join('\n')
+
+            // Download CSV
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+            const link = document.createElement('a')
+            link.href = URL.createObjectURL(blob)
+            link.download = `${form.title}-responses-${new Date().toISOString().split('T')[0]}.csv`
+            link.click()
+            URL.revokeObjectURL(link.href)
+        } catch (error) {
+            console.error('Export error:', error)
+            alert('Failed to export CSV')
+        }
     }
 
     const filteredResponses = responses.filter((response) =>
