@@ -242,28 +242,28 @@ export default function FormsPage() {
                                                 <MoreVertical className="w-4 h-4 text-muted-foreground" />
                                             </button>
                                             {openMenu === form.id && (
-                                                <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-900 rounded-lg shadow-lg border z-10">
+                                                <div className="absolute right-0 top-full mt-1 w-32 bg-black border border-gray-700 rounded-lg shadow-lg z-10">
                                                     <Link
                                                         href={`/forms/${form.id}`}
-                                                        className="block px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-t-lg"
+                                                        className="block px-3 py-2 text-sm text-white hover:bg-white/10 rounded-t-lg"
                                                         onClick={() => setOpenMenu(null)}
                                                     >
                                                         Edit
                                                     </Link>
                                                     <button
-                                                        className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                                                        className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-white/10"
                                                         onClick={() => handleDuplicate(form)}
                                                     >
                                                         Duplicate
                                                     </button>
                                                     <button
-                                                        className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                                                        className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-white/10"
                                                         onClick={() => handleTogglePublish(form)}
                                                     >
                                                         {form.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
                                                     </button>
                                                     <button
-                                                        className="block w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-b-lg"
+                                                        className="block w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-900/30 rounded-b-lg"
                                                         onClick={() => handleDelete(form.id, form.title)}
                                                     >
                                                         Delete

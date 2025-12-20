@@ -167,6 +167,38 @@ export async function DELETE(request: NextRequest) {
             }, { status: 403 })
         }
 
+        // Get responses to find any file URLs for blob cleanup
+        const responses = await prisma.response.findMany({
+            where: { formId },
+            select: { data: true }
+        })
+
+        // Extract file URLs from response data for blob cleanup
+        const fileUrls: string[] = []
+        for (const response of responses) {
+            const data = response.data as Record<string, unknown>
+            for (const value of Object.values(data)) {
+                // Check if value is a file object with url
+                if (value && typeof value === 'object' && 'url' in value) {
+                    const fileValue = value as { url?: string }
+                    if (fileValue.url && fileValue.url.includes('blob.vercel-storage.com')) {
+                        fileUrls.push(fileValue.url)
+                    }
+                }
+            }
+        }
+
+        // Delete files from blob storage
+        if (fileUrls.length > 0) {
+            try {
+                const { del } = await import('@vercel/blob')
+                await del(fileUrls)
+            } catch (blobError) {
+                console.error('Failed to delete some blob files:', blobError)
+                // Continue with response deletion even if blob cleanup fails
+            }
+        }
+
         // Delete all responses for this form
         const result = await prisma.response.deleteMany({
             where: { formId }
@@ -174,8 +206,9 @@ export async function DELETE(request: NextRequest) {
 
         return NextResponse.json({
             success: true,
-            message: `Deleted ${result.count} responses`,
+            message: `Deleted ${result.count} responses and ${fileUrls.length} files`,
             count: result.count,
+            filesDeleted: fileUrls.length,
         })
     } catch (error) {
         console.error("Failed to delete responses:", error)
