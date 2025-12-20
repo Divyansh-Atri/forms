@@ -122,3 +122,66 @@ export async function POST(request: NextRequest) {
         }, { status: 500 })
     }
 }
+
+// DELETE /api/responses - Delete all responses for a form
+export async function DELETE(request: NextRequest) {
+    try {
+        const { prisma } = await import('@/lib/db')
+        const { searchParams } = new URL(request.url)
+        const formId = searchParams.get('formId')
+        const cookieStore = await cookies()
+        const userId = cookieStore.get('user-id')?.value
+        const workspaceId = cookieStore.get('workspace-id')?.value
+
+        if (!userId || !workspaceId) {
+            return NextResponse.json({
+                success: false,
+                error: "Unauthorized",
+            }, { status: 401 })
+        }
+
+        if (!formId) {
+            return NextResponse.json({
+                success: false,
+                error: "formId is required",
+            }, { status: 400 })
+        }
+
+        // Verify the form belongs to user's workspace
+        const form = await prisma.form.findUnique({
+            where: { id: formId },
+            select: { workspaceId: true }
+        })
+
+        if (!form) {
+            return NextResponse.json({
+                success: false,
+                error: "Form not found",
+            }, { status: 404 })
+        }
+
+        if (form.workspaceId !== workspaceId) {
+            return NextResponse.json({
+                success: false,
+                error: "Access denied",
+            }, { status: 403 })
+        }
+
+        // Delete all responses for this form
+        const result = await prisma.response.deleteMany({
+            where: { formId }
+        })
+
+        return NextResponse.json({
+            success: true,
+            message: `Deleted ${result.count} responses`,
+            count: result.count,
+        })
+    } catch (error) {
+        console.error("Failed to delete responses:", error)
+        return NextResponse.json({
+            success: false,
+            error: "Failed to delete responses"
+        }, { status: 500 })
+    }
+}

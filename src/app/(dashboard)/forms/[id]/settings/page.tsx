@@ -132,9 +132,17 @@ export default function FormSettingsPage({ params }: { params: { id: string } })
         if (!confirm("Are you sure you want to delete all responses? This action cannot be undone.")) return
 
         try {
-            // Note: This would need a DELETE /api/responses endpoint
-            // For now, we'll show a message
-            alert("Delete responses functionality requires backend implementation")
+            const response = await fetch(`/api/responses?formId=${params.id}`, {
+                method: 'DELETE',
+            })
+
+            const result = await response.json()
+
+            if (result.success) {
+                alert(`Successfully deleted ${result.count} responses`)
+            } else {
+                alert(`Failed to delete responses: ${result.error}`)
+            }
         } catch (error) {
             console.error('Delete responses error:', error)
             alert("Failed to delete responses")

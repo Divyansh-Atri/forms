@@ -89,7 +89,7 @@ const questionCategories = [
 
 export function QuestionPalette({ onAddQuestion }: QuestionPaletteProps) {
     return (
-        <div className="w-64 bg-white dark:bg-gray-900 border-r overflow-y-auto p-4 shrink-0">
+        <div className="hidden md:block w-64 bg-black border-r border-gray-800 overflow-y-auto p-4 shrink-0">
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-4">
                 Question Types
             </h3>
@@ -105,10 +105,10 @@ export function QuestionPalette({ onAddQuestion }: QuestionPaletteProps) {
                                 <button
                                     key={question.type}
                                     onClick={() => onAddQuestion(question.type)}
-                                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+                                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-white/10 transition-colors text-left text-white"
                                 >
-                                    <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-                                        <question.icon className="w-4 h-4 text-muted-foreground" />
+                                    <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center shrink-0">
+                                        <question.icon className="w-4 h-4 text-gray-400" />
                                     </div>
                                     <span className="font-medium">{question.label}</span>
                                 </button>

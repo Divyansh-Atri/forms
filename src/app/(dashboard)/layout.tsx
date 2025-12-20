@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,7 +15,9 @@ import {
     LogOut,
     ChevronDown,
     Bell,
-    Search
+    Search,
+    Menu,
+    X
 } from "lucide-react"
 
 interface DashboardLayoutProps {
@@ -31,32 +34,46 @@ const navItems = [
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const pathname = usePathname()
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
     return (
         <div className="min-h-screen bg-black">
             {/* Top Navigation */}
             <header className="fixed top-0 left-0 right-0 h-16 bg-black border-b border-gray-800 z-50">
                 <div className="flex items-center justify-between h-full px-4 lg:px-6">
-                    {/* Logo */}
+                    {/* Left side */}
                     <div className="flex items-center gap-4">
+                        {/* Mobile menu button */}
+                        <button
+                            className="lg:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        >
+                            {mobileMenuOpen ? (
+                                <X className="w-5 h-5 text-white" />
+                            ) : (
+                                <Menu className="w-5 h-5 text-white" />
+                            )}
+                        </button>
+
+                        {/* Logo */}
                         <Link href="/forms" className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                                 <FileText className="w-4 h-4 text-white" />
                             </div>
-                            <span className="font-bold text-lg hidden sm:block text-white">Sanjeev Atri</span>
+                            <span className="font-bold text-lg hidden sm:block text-white">SanjeevForms</span>
                         </Link>
 
                         {/* Workspace selector */}
-                        <button className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                        <button className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">
                             <span className="text-sm font-medium text-white">My Workspace</span>
-                            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            <ChevronDown className="w-4 h-4 text-gray-400" />
                         </button>
                     </div>
 
                     {/* Search */}
                     <div className="hidden md:flex items-center flex-1 max-w-md mx-4">
                         <div className="relative w-full">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                             <input
                                 type="search"
                                 placeholder="Search forms..."
@@ -74,12 +91,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             </Button>
                         </Link>
 
-                        <button className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                            <Bell className="w-5 h-5 text-muted-foreground" />
+                        {/* Mobile add button */}
+                        <Link href="/forms/new" className="sm:hidden">
+                            <button className="p-2 rounded-lg bg-white text-black">
+                                <Plus className="w-5 h-5" />
+                            </button>
+                        </Link>
+
+                        <button className="relative p-2 rounded-lg hover:bg-white/10 transition-colors">
+                            <Bell className="w-5 h-5 text-gray-400" />
                             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
                         </button>
 
-                        <button className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                        <button className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/10 transition-colors">
                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
                                 JD
                             </div>
@@ -88,8 +112,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
             </header>
 
-            {/* Sidebar */}
-            <aside className="fixed top-16 left-0 bottom-0 w-64 bg-black border-r border-gray-800 hidden lg:block">
+            {/* Mobile Menu Overlay */}
+            {mobileMenuOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                    onClick={() => setMobileMenuOpen(false)}
+                />
+            )}
+
+            {/* Sidebar - Desktop & Mobile */}
+            <aside className={cn(
+                "fixed top-16 left-0 bottom-0 w-64 bg-black border-r border-gray-800 z-40 transition-transform duration-300",
+                "lg:translate-x-0",
+                mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+            )}>
                 <nav className="p-4 space-y-1">
                     {navItems.map((item) => {
                         const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
@@ -97,6 +133,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             <Link
                                 key={item.href}
                                 href={item.href}
+                                onClick={() => setMobileMenuOpen(false)}
                                 className={cn(
                                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
                                     isActive
@@ -112,7 +149,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </nav>
 
                 {/* Bottom section */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 border-t">
+                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-800">
                     <button className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm font-medium text-gray-400 hover:bg-white/5 hover:text-white transition-colors">
                         <LogOut className="w-5 h-5" />
                         Log out
@@ -129,3 +166,4 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
     )
 }
+

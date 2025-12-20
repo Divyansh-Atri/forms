@@ -258,9 +258,9 @@ export default function FormEditorPage() {
     }
 
     return (
-        <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-950 -m-4 lg:-m-8">
+        <div className="h-screen flex flex-col bg-black -m-4 lg:-m-8">
             {/* Top Bar */}
-            <header className="h-14 bg-white dark:bg-gray-900 border-b flex items-center justify-between px-4 shrink-0">
+            <header className="h-14 bg-black border-b border-gray-800 flex items-center justify-between px-4 shrink-0">
                 <div className="flex items-center gap-4">
                     <Link href="/forms">
                         <Button variant="ghost" size="icon">
@@ -270,7 +270,7 @@ export default function FormEditorPage() {
                     <Input
                         value={form.title}
                         onChange={(e) => setForm({ ...form, title: e.target.value })}
-                        className="font-semibold border-0 bg-transparent focus-visible:ring-0 text-lg w-64"
+                        className="font-semibold border-0 bg-transparent focus-visible:ring-0 text-lg w-64 text-white placeholder-gray-500"
                         placeholder="Form title"
                     />
                     <Badge variant="secondary">{form.status}</Badge>
@@ -287,8 +287,8 @@ export default function FormEditorPage() {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                                 className={`px-4 py-1.5 text-sm font-medium transition-colors ${activeTab === tab.id
-                                    ? "bg-primary text-white"
-                                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                                    ? "bg-white text-black"
+                                    : "text-gray-400 hover:text-white"
                                     }`}
                             >
                                 {tab.label}
