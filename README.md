@@ -4,7 +4,7 @@ A modern, full-featured forms application built with Next.js 14. Create beautifu
 
 ![Forms](https://img.shields.io/badge/Next.js-14-black) ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue) ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3-cyan)
 
-## ✨ Features
+## Features
 
 ### Form Builder
 - **Drag-and-drop interface** - Easily reorder questions
@@ -27,7 +27,7 @@ A modern, full-featured forms application built with Next.js 14. Create beautifu
 - **Dark mode** - Full dark theme support
 - **Responsive** - Works on desktop, tablet, and mobile
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Node.js 18+ 
@@ -60,7 +60,7 @@ NEXTAUTH_SECRET="your-secret-key"
 NEXTAUTH_URL="http://localhost:3000"
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
@@ -81,7 +81,7 @@ src/
 └── types/                # TypeScript type definitions
 ```
 
-## 🔌 API Endpoints
+##  API Endpoints
 
 ### Forms
 | Method | Endpoint | Description |
@@ -117,7 +117,7 @@ src/
 - **Drag & Drop**: dnd-kit
 - **Icons**: Lucide React
 
-## 📝 Usage
+##Usage
 
 ### Creating a Form
 
@@ -141,7 +141,7 @@ src/
 2. Click "Responses" on any form
 3. View individual responses or aggregated data
 
-## 🗺 Roadmap
+##  Roadmap
 
 - [ ] Real database integration (Prisma)
 - [ ] User authentication (NextAuth.js)
@@ -153,10 +153,10 @@ src/
 - [ ] PDF export
 - [ ] Quiz mode with scoring
 
-## 📄 License
+## License
 
 MIT License - feel free to use this project for personal or commercial purposes.
 
 ---
 
-Built with ❤️ using Next.js
+Built with ❤️ 
