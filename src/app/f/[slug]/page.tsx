@@ -471,6 +471,17 @@ function QuestionInput({
                     ))}
                 </div>
             )
+        case "date":
+    return (
+        <Input
+            type="date"
+            value={(value as string) || ""}
+            onChange={(e) => onChange(e.target.value)}
+            className="text-lg py-6"
+            autoFocus
+        />
+    )
+
 
         case "time":
             return (
