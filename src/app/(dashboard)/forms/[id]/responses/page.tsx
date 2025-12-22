@@ -5,7 +5,6 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
     ArrowLeft,
@@ -13,16 +12,27 @@ import {
     Search,
     Eye,
     Trash2,
-    MoreVertical,
     CheckCircle,
     Clock,
     Filter,
     Calendar,
     Users,
     TrendingUp,
-    BarChart3,
     Loader2,
+    X,
 } from "lucide-react"
+
+interface Question {
+    id: string
+    title: string
+    type: string
+}
+
+interface Form {
+    id: string
+    title: string
+    questions: Question[]
+}
 
 interface Response {
     id: string
@@ -38,15 +48,15 @@ interface Response {
     }
 }
 
-const renderResponseValue = (key: string, value: unknown) => {
+const renderResponseValue = (value: unknown) => {
     // File Upload
     const isFile = value && typeof value === 'object' && 'url' in value && 'name' in value
     if (isFile) {
         return (
-            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-700 rounded-lg">
                 <div className="flex-1">
-                    <p className="font-medium">{(value as any).name}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="font-medium text-slate-900 dark:text-white">{(value as any).name}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
                         {((value as any).size / 1024 / 1024).toFixed(2)} MB
                     </p>
                 </div>
@@ -54,7 +64,7 @@ const renderResponseValue = (key: string, value: unknown) => {
                     href={(value as any).url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                 >
                     Download
                 </a>
@@ -67,7 +77,7 @@ const renderResponseValue = (key: string, value: unknown) => {
         return (
             <ul className="list-disc list-inside space-y-1">
                 {value.map((item: any, i: number) => (
-                    <li key={i} className="text-base">{String(item)}</li>
+                    <li key={i} className="text-slate-800 dark:text-slate-100">{String(item)}</li>
                 ))}
             </ul>
         )
@@ -79,17 +89,17 @@ const renderResponseValue = (key: string, value: unknown) => {
         (value.startsWith('http') && /\.(jpg|jpeg|png|gif|webp)$/i.test(value))
     )
     if (isImage) {
-        return <img src={value} alt="Response" className="max-w-md rounded-lg border" />
+        return <img src={value} alt="Response" className="max-w-md rounded-lg border border-slate-200 dark:border-slate-600" />
     }
 
     // Object (Address, Matrix)
     if (value && typeof value === 'object') {
         return (
-            <div className="space-y-2 pl-4 border-l-2">
+            <div className="space-y-2 pl-4 border-l-2 border-blue-500">
                 {Object.entries(value as object).map(([k, v]) => (
                     <div key={k}>
-                        <span className="text-sm text-muted-foreground">{k}: </span>
-                        <span className="text-base">{String(v)}</span>
+                        <span className="text-sm text-slate-500 dark:text-slate-400">{k}: </span>
+                        <span className="text-slate-800 dark:text-slate-100">{String(v)}</span>
                     </div>
                 ))}
             </div>
@@ -97,32 +107,57 @@ const renderResponseValue = (key: string, value: unknown) => {
     }
 
     // Simple Text/Number/Date
-    return <p className="text-base">{String(value)}</p>
+    return <p className="text-slate-800 dark:text-slate-100">{String(value)}</p>
 }
 
 export default function ResponsesPage() {
     const params = useParams()
     const formId = params.id as string
 
+    const [form, setForm] = useState<Form | null>(null)
     const [responses, setResponses] = useState<Response[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedResponses, setSelectedResponses] = useState<string[]>([])
     const [viewingResponse, setViewingResponse] = useState<Response | null>(null)
 
+    // Create question ID to title map
+    const questionMap = new Map<string, string>()
+    if (form?.questions) {
+        form.questions.forEach((q, index) => {
+            questionMap.set(q.id, q.title || `Question ${index + 1}`)
+        })
+    }
+
+    // Get question order from form
+    const questionOrder = form?.questions?.map(q => q.id) || []
+
     useEffect(() => {
         let isMounted = true
 
-        const fetchResponses = async () => {
+        const fetchData = async () => {
             try {
-                const response = await fetch(`/api/responses?formId=${formId}`)
-                const result = await response.json()
+                // Fetch form details first
+                const formResponse = await fetch(`/api/forms/${formId}`)
+                const formResult = await formResponse.json()
 
-                if (result.success && isMounted) {
-                    setResponses(result.data)
+                if (formResult.success && isMounted) {
+                    setForm(formResult.data)
+                }
+
+                // Fetch responses
+                const responsesResponse = await fetch(`/api/responses?formId=${formId}`)
+                const responsesResult = await responsesResponse.json()
+
+                if (responsesResult.success && isMounted) {
+                    // Sort responses by createdAt (newest first) for consistent order
+                    const sortedResponses = responsesResult.data.sort(
+                        (a: Response, b: Response) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                    )
+                    setResponses(sortedResponses)
                 }
             } catch (error) {
-                console.error('Failed to fetch responses:', error)
+                console.error('Failed to fetch data:', error)
             } finally {
                 if (isMounted) {
                     setIsLoading(false)
@@ -131,7 +166,7 @@ export default function ResponsesPage() {
         }
 
         if (formId) {
-            fetchResponses()
+            fetchData()
         }
 
         return () => {
@@ -160,48 +195,33 @@ export default function ResponsesPage() {
     }
 
     const handleExportCSV = async () => {
-        if (responses.length === 0) {
+        if (responses.length === 0 || !form) {
             alert('No responses to export')
             return
         }
 
         try {
-            // Fetch form to get question titles
-            const formResponse = await fetch(`/api/forms/${formId}`)
-            const formResult = await formResponse.json()
+            // Use the same order as the form questions
+            const orderedKeys = questionOrder
 
-            if (!formResult.success) {
-                alert('Failed to fetch form details')
-                return
-            }
-
-            const form = formResult.data
-            const questions = form.questions || []
-
-            // Create question map: id -> title (without numbers)
-            const questionMap = new Map<string, string>()
-            questions.forEach((q: any) => {
-                questionMap.set(q.id, q.title)
-            })
-
-            // Get all unique question keys from responses
-            const allKeys = new Set<string>()
-            responses.forEach(r => Object.keys(r.data).forEach(k => allKeys.add(k)))
-
-            // Map keys to titles
+            // Create headers using question titles
             const headers = [
                 'Submitted At',
-                ...Array.from(allKeys).map(key => questionMap.get(key) || key)
+                ...orderedKeys.map(key => questionMap.get(key) || key)
             ]
 
-            // Convert responses to CSV rows
-            const rows = responses.map(response => {
+            // Sort responses the same way as displayed (newest first)
+            const sortedResponses = [...responses].sort(
+                (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            )
+
+            // Convert responses to CSV rows in the same order
+            const rows = sortedResponses.map(response => {
                 const formatValue = (value: unknown): string => {
                     if (value === null || value === undefined) return ''
                     if (Array.isArray(value)) return value.join('; ')
                     if (typeof value === 'object') {
                         if ('url' in value && 'name' in value) return (value as any).name
-                        // Format address and other objects nicely
                         return Object.entries(value)
                             .map(([k, v]) => `${k}: ${v}`)
                             .join(', ')
@@ -211,7 +231,7 @@ export default function ResponsesPage() {
 
                 return [
                     new Date(response.createdAt).toLocaleString(),
-                    ...Array.from(allKeys).map(key => formatValue(response.data[key]))
+                    ...orderedKeys.map(key => formatValue(response.data[key]))
                 ]
             })
 
@@ -240,6 +260,19 @@ export default function ResponsesPage() {
         )
     )
 
+    // Get preview data from first two questions for table display
+    const getResponsePreview = (response: Response) => {
+        const entries = questionOrder
+            .filter(key => response.data[key] !== undefined)
+            .slice(0, 2)
+            .map(key => ({
+                title: questionMap.get(key) || key,
+                value: response.data[key]
+            }))
+
+        return entries
+    }
+
     const stats = {
         total: responses.length,
         complete: responses.filter((r) => r.isComplete).length,
@@ -251,7 +284,7 @@ export default function ResponsesPage() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
             </div>
         )
     }
@@ -266,10 +299,12 @@ export default function ResponsesPage() {
                     </Button>
                 </Link>
                 <div className="flex-1">
-                    <h1 className="text-2xl font-bold">Responses</h1>
-                    <p className="text-muted-foreground">View and manage form responses</p>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Responses</h1>
+                    <p className="text-slate-500 dark:text-slate-400">
+                        {form?.title ? `Responses for "${form.title}"` : 'View and manage form responses'}
+                    </p>
                 </div>
-                <Button variant="outline" onClick={handleExportCSV}>
+                <Button onClick={handleExportCSV}>
                     <Download className="w-4 h-4 mr-2" />
                     Export CSV
                 </Button>
@@ -277,59 +312,59 @@ export default function ResponsesPage() {
 
             {/* Stats Cards */}
             <div className="grid gap-4 md:grid-cols-4">
-                <Card>
+                <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                                 <Users className="w-6 h-6 text-blue-600" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold">{stats.total}</p>
-                                <p className="text-sm text-muted-foreground">Total Responses</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.total}</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Total Responses</p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
                                 <CheckCircle className="w-6 h-6 text-green-600" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold">{stats.complete}</p>
-                                <p className="text-sm text-muted-foreground">Completed</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.complete}</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Completed</p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
                                 <Clock className="w-6 h-6 text-purple-600" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold">{stats.avgTime}m</p>
-                                <p className="text-sm text-muted-foreground">Avg. Time</p>
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.avgTime}m</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Avg. Time</p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
                                 <TrendingUp className="w-6 h-6 text-orange-600" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold">
-                                    {Math.round((stats.complete / stats.total) * 100)}%
+                                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                                    {stats.total > 0 ? Math.round((stats.complete / stats.total) * 100) : 0}%
                                 </p>
-                                <p className="text-sm text-muted-foreground">Completion Rate</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Completion Rate</p>
                             </div>
                         </div>
                     </CardContent>
@@ -339,12 +374,12 @@ export default function ResponsesPage() {
             {/* Filters & Search */}
             <div className="flex items-center gap-4">
                 <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input
                         placeholder="Search responses..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9"
+                        className="pl-9 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white"
                     />
                 </div>
                 <Button variant="outline" size="sm">
@@ -358,16 +393,16 @@ export default function ResponsesPage() {
             </div>
 
             {/* Responses Table */}
-            <Card>
+            <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
-                            <tr className="border-b">
+                            <tr className="border-b border-slate-200 dark:border-slate-700">
                                 <th className="text-left p-4 w-12">
                                     <input
                                         type="checkbox"
-                                        className="rounded"
-                                        checked={selectedResponses.length === filteredResponses.length}
+                                        className="rounded border-slate-300 dark:border-slate-600"
+                                        checked={selectedResponses.length === filteredResponses.length && filteredResponses.length > 0}
                                         onChange={(e) =>
                                             setSelectedResponses(
                                                 e.target.checked ? filteredResponses.map((r) => r.id) : []
@@ -375,74 +410,88 @@ export default function ResponsesPage() {
                                         }
                                     />
                                 </th>
-                                <th className="text-left p-4 font-medium text-muted-foreground">
-                                    Respondent
+                                <th className="text-left p-4 font-semibold text-slate-700 dark:text-slate-200">
+                                    Response Preview
                                 </th>
-                                <th className="text-left p-4 font-medium text-muted-foreground">
+                                <th className="text-left p-4 font-semibold text-slate-700 dark:text-slate-200">
                                     Submitted
                                 </th>
-                                <th className="text-left p-4 font-medium text-muted-foreground w-24">
+                                <th className="text-left p-4 font-semibold text-slate-700 dark:text-slate-200 w-24">
                                     Actions
                                 </th>
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredResponses.map((response) => (
-                                <tr key={response.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-900/50">
-                                    <td className="p-4">
-                                        <input
-                                            type="checkbox"
-                                            className="rounded"
-                                            checked={selectedResponses.includes(response.id)}
-                                            onChange={(e) =>
-                                                setSelectedResponses(
-                                                    e.target.checked
-                                                        ? [...selectedResponses, response.id]
-                                                        : selectedResponses.filter((id) => id !== response.id)
-                                                )
-                                            }
-                                        />
-                                    </td>
-                                    <td className="p-4">
-                                        <div>
-                                            <p className="font-medium">{String(response.data.q1 || "Anonymous")}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {String(response.data.q2 || "No email")}
-                                            </p>
-                                        </div>
-                                    </td>
-                                    <td className="p-4 text-muted-foreground">
-                                        {new Date(response.createdAt).toLocaleDateString()}
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8"
-                                                onClick={() => setViewingResponse(response)}
-                                            >
-                                                <Eye className="w-4 h-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-red-500"
-                                                onClick={() => handleDeleteResponse(response.id)}
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                            {filteredResponses.map((response) => {
+                                const preview = getResponsePreview(response)
+                                return (
+                                    <tr key={response.id} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                        <td className="p-4">
+                                            <input
+                                                type="checkbox"
+                                                className="rounded border-slate-300 dark:border-slate-600"
+                                                checked={selectedResponses.includes(response.id)}
+                                                onChange={(e) =>
+                                                    setSelectedResponses(
+                                                        e.target.checked
+                                                            ? [...selectedResponses, response.id]
+                                                            : selectedResponses.filter((id) => id !== response.id)
+                                                    )
+                                                }
+                                            />
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="space-y-1">
+                                                {preview.length > 0 ? (
+                                                    preview.map((item, i) => (
+                                                        <div key={i}>
+                                                            <span className="text-xs text-slate-500 dark:text-slate-400">{item.title}: </span>
+                                                            <span className="text-slate-900 dark:text-white font-medium">
+                                                                {Array.isArray(item.value)
+                                                                    ? item.value.join(', ')
+                                                                    : String(item.value).slice(0, 50)}
+                                                                {String(item.value).length > 50 && '...'}
+                                                            </span>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <span className="text-slate-400 dark:text-slate-500">No data</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="p-4 text-slate-600 dark:text-slate-300">
+                                            {new Date(response.createdAt).toLocaleDateString()} at {new Date(response.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="flex items-center gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
+                                                    onClick={() => setViewingResponse(response)}
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                    onClick={() => handleDeleteResponse(response.id)}
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )
+                            })}
                         </tbody>
                     </table>
                 </div>
 
                 {filteredResponses.length === 0 && (
                     <div className="p-12 text-center">
-                        <p className="text-muted-foreground">No responses found</p>
+                        <p className="text-slate-500 dark:text-slate-400">No responses found</p>
                     </div>
                 )}
             </Card>
@@ -450,20 +499,32 @@ export default function ResponsesPage() {
             {/* Response Detail Modal */}
             {viewingResponse && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setViewingResponse(null)}>
-                    <Card className="max-w-2xl w-full max-h-[80vh] overflow-y-auto m-4" onClick={(e) => e.stopPropagation()}>
-                        <CardHeader>
-                            <CardTitle>Response Details</CardTitle>
-                            <p className="text-sm text-muted-foreground">
-                                Submitted {new Date(viewingResponse.createdAt).toLocaleString()}
-                            </p>
+                    <Card className="max-w-2xl w-full max-h-[80vh] overflow-y-auto m-4 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700" onClick={(e) => e.stopPropagation()}>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-slate-900 dark:text-white">Response Details</CardTitle>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">
+                                    Submitted {new Date(viewingResponse.createdAt).toLocaleString()}
+                                </p>
+                            </div>
+                            <Button variant="ghost" size="icon" onClick={() => setViewingResponse(null)}>
+                                <X className="w-5 h-5" />
+                            </Button>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            {Object.entries(viewingResponse.data).map(([key, value]) => (
-                                <div key={key} className="border-b pb-4 last:border-0">
-                                    <p className="font-medium text-sm text-muted-foreground mb-2">{key}</p>
-                                    {renderResponseValue(key, value)}
-                                </div>
-                            ))}
+                        <CardContent className="space-y-6">
+                            {questionOrder.map((questionId) => {
+                                const value = viewingResponse.data[questionId]
+                                if (value === undefined) return null
+
+                                return (
+                                    <div key={questionId} className="border-b border-slate-200 dark:border-slate-700 pb-4 last:border-0">
+                                        <p className="font-semibold text-slate-900 dark:text-white mb-2">
+                                            {questionMap.get(questionId) || questionId}
+                                        </p>
+                                        {renderResponseValue(value)}
+                                    </div>
+                                )
+                            })}
                             <div className="flex justify-end pt-4">
                                 <Button onClick={() => setViewingResponse(null)}>Close</Button>
                             </div>

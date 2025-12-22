@@ -107,8 +107,8 @@ export default function NewFormPage() {
                     </Button>
                 </Link>
                 <div>
-                    <h1 className="text-2xl font-bold">Create New Form</h1>
-                    <p className="text-muted-foreground">
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Create New Form</h1>
+                    <p className="text-slate-500 dark:text-slate-400">
                         {step === "template" ? "Choose a template or start from scratch" : "Enter form details"}
                     </p>
                 </div>
@@ -118,23 +118,23 @@ export default function NewFormPage() {
                 <>
                     {/* Templates */}
                     <div className="mb-8">
-                        <h2 className="text-lg font-semibold mb-4">Templates</h2>
+                        <h2 className="text-lg font-semibold mb-4 text-slate-900 dark:text-white">Templates</h2>
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                             {templates.map((template) => (
                                 <Card
                                     key={template.id}
-                                    className={`cursor-pointer transition-all ${selectedTemplate === template.id
-                                        ? "ring-2 ring-primary border-primary"
-                                        : "hover:border-gray-300"
+                                    className={`cursor-pointer transition-all bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 ${selectedTemplate === template.id
+                                        ? "ring-2 ring-blue-600 border-blue-600"
+                                        : "hover:border-blue-400 dark:hover:border-blue-500"
                                         }`}
                                     onClick={() => setSelectedTemplate(template.id)}
                                 >
                                     <CardContent className="pt-6 text-center">
-                                        <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white mb-4">
+                                        <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white mb-4 shadow-md">
                                             <template.icon className="w-6 h-6" />
                                         </div>
-                                        <h3 className="font-semibold">{template.title}</h3>
-                                        <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
+                                        <h3 className="font-semibold text-slate-900 dark:text-white">{template.title}</h3>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{template.description}</p>
                                     </CardContent>
                                 </Card>
                             ))}
@@ -143,17 +143,17 @@ export default function NewFormPage() {
 
                     {/* Question Types Preview */}
                     <div className="mb-8">
-                        <h2 className="text-lg font-semibold mb-4">Available Question Types</h2>
+                        <h2 className="text-lg font-semibold mb-4 text-slate-900 dark:text-white">Available Question Types</h2>
                         <div className="grid gap-2 md:grid-cols-3 lg:grid-cols-4">
                             {questionTypes.map((qt) => (
                                 <div
                                     key={qt.type}
-                                    className="flex items-center gap-3 p-3 rounded-lg border bg-white dark:bg-gray-900 hover:border-primary/50 transition-colors"
+                                    className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
                                 >
-                                    <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                                        <qt.icon className="w-4 h-4 text-muted-foreground" />
+                                    <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                                        <qt.icon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                     </div>
-                                    <span className="text-sm font-medium">{qt.label}</span>
+                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{qt.label}</span>
                                 </div>
                             ))}
                         </div>
@@ -166,27 +166,33 @@ export default function NewFormPage() {
                     </div>
                 </>
             ) : (
-                <Card>
+                <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                     <CardHeader>
-                        <CardTitle>Form Details</CardTitle>
-                        <CardDescription>
+                        <CardTitle className="text-slate-900 dark:text-white">Form Details</CardTitle>
+                        <CardDescription className="text-slate-500 dark:text-slate-400">
                             Give your form a title and description
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <Input
-                            label="Form Title"
-                            placeholder="e.g., Customer Feedback Survey"
-                            value={formData.title}
-                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        />
-                        <Textarea
-                            label="Description (optional)"
-                            placeholder="Describe what this form is about..."
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            rows={4}
-                        />
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Form Title</label>
+                            <Input
+                                placeholder="e.g., Customer Feedback Survey"
+                                value={formData.title}
+                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                className="bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Description (optional)</label>
+                            <Textarea
+                                placeholder="Describe what this form is about..."
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                rows={4}
+                                className="bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white"
+                            />
+                        </div>
                         <div className="flex justify-between pt-4">
                             <Button variant="outline" onClick={() => setStep("template")} disabled={isCreating}>
                                 Back
