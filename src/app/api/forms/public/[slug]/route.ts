@@ -23,6 +23,18 @@ export async function GET(
                 settings: true,
                 welcomeScreen: true,
                 thankYouScreen: true,
+                formSections: {
+                    orderBy: {
+                        order: 'asc'
+                    },
+                    select: {
+                        id: true,
+                        title: true,
+                        description: true,
+                        order: true,
+                        questions: true,
+                    }
+                }
             }
         })
 
