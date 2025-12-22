@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { JsonImportDialog } from "@/components/forms/json-import-dialog"
 import {
     Plus,
     Search,
@@ -18,7 +19,8 @@ import {
     CheckCircle,
     Pause,
     Archive,
-    Loader2
+    Loader2,
+    FileJson
 } from "lucide-react"
 
 interface Form {
@@ -45,6 +47,7 @@ export default function FormsPage() {
     const [searchQuery, setSearchQuery] = useState("")
     const [selectedStatus, setSelectedStatus] = useState<string | null>(null)
     const [openMenu, setOpenMenu] = useState<string | null>(null)
+    const [showImportDialog, setShowImportDialog] = useState(false)
 
     // Fetch forms from API
     useEffect(() => {
@@ -165,12 +168,18 @@ export default function FormsPage() {
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Forms</h1>
                     <p className="text-slate-500 dark:text-slate-400">Create and manage your forms</p>
                 </div>
-                <Link href="/forms/new">
-                    <Button>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create Form
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+                        <FileJson className="w-4 h-4 mr-2" />
+                        Import JSON
                     </Button>
-                </Link>
+                    <Link href="/forms/new">
+                        <Button>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Form
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             {/* Filters */}
@@ -322,6 +331,11 @@ export default function FormsPage() {
                         )
                     })}
                 </div>
+            )}
+
+            {/* JSON Import Dialog */}
+            {showImportDialog && (
+                <JsonImportDialog onClose={() => setShowImportDialog(false)} />
             )}
         </div>
     )
