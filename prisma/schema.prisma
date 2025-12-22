@@ -186,6 +186,7 @@ model Form {
   
   // Relations
   responses     Response[]
+  formSections  Section[]    // New: Sections for multi-page forms
   
   // Timestamps
   createdAt     DateTime   @default(now())
@@ -195,6 +196,28 @@ model Form {
   @@index([workspaceId])
   @@index([status])
   @@index([createdById])
+}
+
+// ================== SECTIONS (for multi-page forms) ==================
+
+model Section {
+  id            String   @id @default(cuid())
+  formId        String
+  form          Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  
+  title         String
+  description   String?
+  order         Int      @default(0)
+  
+  // Section questions stored as JSON array
+  // Each question belongs to this section
+  questions     Json     @default("[]")
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([formId, order])
+  @@index([formId])
 }
 
 // ================== RESPONSES ==================

@@ -1,0 +1,125 @@
+{
+  "title": "Infrastructure, Immunization and SHG MPR",
+  "description": "Monthly Progress Report for Infrastructure, Immunization and SHG",
+  "sections": [
+    {
+      "id": "basic_info",
+      "title": "Basic Information",
+      "fields": [
+        { "name": "submit_date", "label": "Submit Date", "type": "date", "required": true },
+        { "name": "circle_name", "label": "Name of Circle", "type": "text", "required": true }
+      ]
+    },
+
+    {
+      "id": "awc_infrastructure",
+      "title": "AWC Infrastructure",
+      "fields": [
+        { "name": "own_dept_kachha", "label": "Own Dept. Building Kachha", "type": "number" },
+        { "name": "own_dept_pucca", "label": "Own Dept. Building Pucca", "type": "number" },
+        { "name": "rented_awc_kachha", "label": "Rented AWC Kachha", "type": "number" },
+        { "name": "rented_awc_pucca", "label": "Rented AWC Pucca", "type": "number" },
+        { "name": "awc_school_kachha", "label": "AWC in School Kachha", "type": "number" },
+        { "name": "awc_school_pucca", "label": "AWC in School Pucca", "type": "number" },
+        { "name": "awc_panchayat_kachha", "label": "AWC in Panchayat Kachha", "type": "number" },
+        { "name": "awc_panchayat_pucca", "label": "AWC in Panchayat Pucca", "type": "number" },
+        { "name": "awc_govt_kachha", "label": "AWC in Govt Building Kachha", "type": "number" },
+        { "name": "awc_govt_pucca", "label": "AWC in Govt Building Pucca", "type": "number" }
+      ]
+    },
+
+    {
+      "id": "awc_facilities",
+      "title": "AWC Facilities",
+      "fields": [
+        { "name": "drinking_water_own", "label": "AWC with Drinking Water (Own Premises)", "type": "number" },
+        { "name": "drinking_water_shared", "label": "AWC with Drinking Water (Sharing Base)", "type": "number" },
+        { "name": "no_drinking_water", "label": "AWC without Drinking Water Facility", "type": "number" },
+        { "name": "toilet_own", "label": "AWC with Toilet (Own Premises)", "type": "number" },
+        { "name": "toilet_shared", "label": "AWC with Toilet (Sharing Base)", "type": "number" },
+        { "name": "no_toilet", "label": "AWC without Toilet Facility", "type": "number" }
+      ]
+    },
+
+    {
+      "id": "vhsnd_cbe",
+      "title": "VHNSD and CBE",
+      "fields": [
+        { "name": "awc_vhsnd", "label": "No. of AWC where VHSND Organised", "type": "number" },
+        { "name": "awc_anc_checkup", "label": "No. of AWC where ANC Check-up Done", "type": "number" },
+        { "name": "awc_ecce_day", "label": "No. of AWC where ECCE Day Organised", "type": "number" },
+        { "name": "awc_cbe", "label": "No. of AWC where CBE Organised", "type": "number" },
+        { "name": "participants_cbe", "label": "Participants in CBE", "type": "number" }
+      ]
+    },
+
+    {
+      "id": "immunization_primary",
+      "title": "Immunization – Primary",
+      "fields": [
+        { "name": "bcg_opv_hepb_male", "label": "BCG + OPV0 + HepB0 Male", "type": "number" },
+        { "name": "bcg_opv_hepb_female", "label": "BCG + OPV0 + HepB0 Female", "type": "number" },
+        { "name": "bcg_opv_hepb_total", "label": "BCG + OPV0 + HepB0 Total", "type": "number" }
+      ]
+    },
+
+    {
+      "id": "immunization_penta",
+      "title": "Immunization – OPV & Pentavalent",
+      "fields": [
+        { "name": "opv1_penta1_total", "label": "OPV1 + Penta1 Total", "type": "number" },
+        { "name": "opv2_penta2_total", "label": "OPV2 + Penta2 Total", "type": "number" },
+        { "name": "opv3_penta3_total", "label": "OPV3 + Penta3 Total", "type": "number" }
+      ]
+    },
+
+    {
+      "id": "immunization_booster_tt_mr",
+      "title": "Booster, TT and MR",
+      "fields": [
+        { "name": "booster_total", "label": "Booster Total", "type": "number" },
+        { "name": "mr1_total", "label": "MR1 / Measles Total", "type": "number" },
+        { "name": "tt1_total", "label": "TT 1st Total", "type": "number" },
+        { "name": "tt2_total", "label": "TT 2nd Total", "type": "number" }
+      ]
+    },
+
+    {
+      "id": "health_checkups",
+      "title": "Health Checkups",
+      "fields": [
+        { "name": "checkup_0_3_years", "label": "Health Checkup (0–3 Years)", "type": "number" },
+        { "name": "checkup_3_6_years", "label": "Health Checkup (3–6 Years)", "type": "number" },
+        { "name": "checkup_pregnant", "label": "Health Checkup (Pregnant)", "type": "number" },
+        { "name": "checkup_lactating", "label": "Health Checkup (Lactating)", "type": "number" }
+      ]
+    },
+
+    {
+      "id": "shg",
+      "title": "Self Help Groups (SHG)",
+      "fields": [
+        { "name": "shg_existing", "label": "SHG Existing", "type": "number" },
+        { "name": "shg_formed", "label": "SHG Formed During Month", "type": "number" },
+        { "name": "shg_dissolved", "label": "SHG Dissolved During Month", "type": "number" },
+        { "name": "shg_total", "label": "SHG Total", "type": "number" },
+        { "name": "shg_savings_previous", "label": "SHG Savings Previous", "type": "number" },
+        { "name": "shg_savings_current", "label": "SHG Savings During Month", "type": "number" },
+        { "name": "shg_savings_total", "label": "SHG Savings Total", "type": "number" },
+        { "name": "shg_loan_total", "label": "SHG Loan Total", "type": "number" },
+        { "name": "shg_loan_recovered", "label": "SHG Loan Recovered", "type": "number" }
+      ]
+    },
+
+    {
+      "id": "pse_awc_benefits",
+      "title": "PSE & AWC Benefits",
+      "fields": [
+        { "name": "pse_male_total", "label": "Total Male PSE", "type": "number" },
+        { "name": "pse_female_total", "label": "Total Female PSE", "type": "number" },
+        { "name": "thr_pregnant_total", "label": "THR Benefited Pregnant Mothers", "type": "number" },
+        { "name": "thr_lactating_total", "label": "THR Benefited Lactating Mothers", "type": "number" }
+      ]
+    }
+  ]
+}
