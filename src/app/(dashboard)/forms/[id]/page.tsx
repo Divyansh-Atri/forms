@@ -52,15 +52,15 @@ function SettingsToggle({
     return (
         <div className="flex items-center justify-between py-2">
             <div>
-                <p className="font-medium text-sm">{label}</p>
-                <p className="text-sm text-muted-foreground">{description}</p>
+                <p className="font-medium text-sm text-slate-900 dark:text-white">{label}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{description}</p>
             </div>
             <button
                 type="button"
                 role="switch"
                 aria-checked={checked}
                 onClick={() => setChecked(!checked)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${checked ? "bg-primary" : "bg-gray-200 dark:bg-gray-700"
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${checked ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"
                     }`}
             >
                 <span
@@ -248,19 +248,19 @@ export default function FormEditorPage() {
 
     if (isLoading) {
         return (
-            <div className="h-screen flex items-center justify-center">
+            <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-muted-foreground">Loading form...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-slate-500 dark:text-slate-400">Loading form...</p>
                 </div>
             </div>
         )
     }
 
     return (
-        <div className="h-screen flex flex-col bg-black -m-4 lg:-m-8">
+        <div className="h-screen flex flex-col bg-slate-900 -m-4 lg:-m-8">
             {/* Top Bar */}
-            <header className="h-14 bg-black border-b border-gray-800 flex items-center justify-between px-4 shrink-0">
+            <header className="h-14 bg-slate-800 border-b border-slate-700 flex items-center justify-between px-4 shrink-0">
                 <div className="flex items-center gap-4">
                     <Link href="/forms">
                         <Button variant="ghost" size="icon">
@@ -287,8 +287,8 @@ export default function FormEditorPage() {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                                 className={`px-4 py-1.5 text-sm font-medium transition-colors ${activeTab === tab.id
-                                    ? "bg-white text-black"
-                                    : "text-gray-400 hover:text-white"
+                                    ? "bg-blue-600 text-white"
+                                    : "text-slate-300 hover:text-white hover:bg-slate-700"
                                     }`}
                             >
                                 {tab.label}
@@ -398,10 +398,10 @@ export default function FormEditorPage() {
 
                                 {/* Empty State */}
                                 {form.questions.length === 0 && (
-                                    <Card className="p-12 text-center border-dashed">
-                                        <Plus className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                                        <h3 className="text-lg font-semibold mb-2">No questions yet</h3>
-                                        <p className="text-muted-foreground mb-4">
+                                    <Card className="p-12 text-center border-dashed border-slate-600 bg-slate-800">
+                                        <Plus className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                                        <h3 className="text-lg font-semibold mb-2 text-white">No questions yet</h3>
+                                        <p className="text-slate-400 mb-4">
                                             Add questions from the palette on the left
                                         </p>
                                         <Button onClick={() => addQuestion(QuestionType.SHORT_TEXT)}>
@@ -431,14 +431,14 @@ export default function FormEditorPage() {
                 {activeTab === "settings" && (
                     <div className="flex-1 overflow-y-auto p-6">
                         <div className="max-w-2xl mx-auto space-y-6">
-                            <h2 className="text-xl font-semibold">Form Settings</h2>
+                            <h2 className="text-xl font-semibold text-white">Form Settings</h2>
 
                             {/* General Settings */}
-                            <Card className="p-6">
-                                <h3 className="font-medium mb-4">General</h3>
+                            <Card className="p-6 bg-slate-800 border-slate-700">
+                                <h3 className="font-medium mb-4 text-white">General</h3>
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="text-sm font-medium">Form Title</label>
+                                        <label className="text-sm font-medium text-slate-200">Form Title</label>
                                         <Input
                                             value={form.title}
                                             onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -446,7 +446,7 @@ export default function FormEditorPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-sm font-medium">Description</label>
+                                        <label className="text-sm font-medium text-slate-200">Description</label>
                                         <Input
                                             value={form.description}
                                             onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -458,8 +458,8 @@ export default function FormEditorPage() {
                             </Card>
 
                             {/* Access Settings */}
-                            <Card className="p-6">
-                                <h3 className="font-medium mb-4">Access Control</h3>
+                            <Card className="p-6 bg-slate-800 border-slate-700">
+                                <h3 className="font-medium mb-4 text-white">Access Control</h3>
                                 <div className="space-y-3">
                                     <SettingsToggle
                                         label="Accept responses"
@@ -485,8 +485,8 @@ export default function FormEditorPage() {
                             </Card>
 
                             {/* Quiz Mode */}
-                            <Card className="p-6">
-                                <h3 className="font-medium mb-4">Quiz Mode</h3>
+                            <Card className="p-6 bg-slate-800 border-slate-700">
+                                <h3 className="font-medium mb-4 text-white">Quiz Mode</h3>
                                 <div className="space-y-3">
                                     <SettingsToggle
                                         label="Enable quiz mode"
