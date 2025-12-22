@@ -37,47 +37,47 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
     return (
-        <div className="min-h-screen bg-black">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
             {/* Top Navigation */}
-            <header className="fixed top-0 left-0 right-0 h-16 bg-black border-b border-gray-800 z-50">
+            <header className="fixed top-0 left-0 right-0 h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 z-50 shadow-sm">
                 <div className="flex items-center justify-between h-full px-4 lg:px-6">
                     {/* Left side */}
                     <div className="flex items-center gap-4">
                         {/* Mobile menu button */}
                         <button
-                            className="lg:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
+                            className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                         >
                             {mobileMenuOpen ? (
-                                <X className="w-5 h-5 text-white" />
+                                <X className="w-5 h-5 text-slate-700 dark:text-slate-200" />
                             ) : (
-                                <Menu className="w-5 h-5 text-white" />
+                                <Menu className="w-5 h-5 text-slate-700 dark:text-slate-200" />
                             )}
                         </button>
 
                         {/* Logo */}
                         <Link href="/forms" className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-md">
                                 <FileText className="w-4 h-4 text-white" />
                             </div>
-                            <span className="font-bold text-lg hidden sm:block text-white">SanjeevForms</span>
+                            <span className="font-bold text-lg hidden sm:block text-slate-800 dark:text-white">SanjeevForms</span>
                         </Link>
 
                         {/* Workspace selector */}
-                        <button className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors">
-                            <span className="text-sm font-medium text-white">My Workspace</span>
-                            <ChevronDown className="w-4 h-4 text-gray-400" />
+                        <button className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">My Workspace</span>
+                            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                         </button>
                     </div>
 
                     {/* Search */}
                     <div className="hidden md:flex items-center flex-1 max-w-md mx-4">
                         <div className="relative w-full">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <input
                                 type="search"
                                 placeholder="Search forms..."
-                                className="w-full h-10 pl-10 pr-4 rounded-lg border border-gray-700 bg-gray-900 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white transition-all"
+                                className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                             />
                         </div>
                     </div>
@@ -93,19 +93,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
                         {/* Mobile add button */}
                         <Link href="/forms/new" className="sm:hidden">
-                            <button className="p-2 rounded-lg bg-white text-black">
+                            <button className="p-2 rounded-lg bg-blue-600 text-white shadow-md hover:bg-blue-700 transition-colors">
                                 <Plus className="w-5 h-5" />
                             </button>
                         </Link>
 
-                        <button className="relative p-2 rounded-lg hover:bg-white/10 transition-colors">
-                            <Bell className="w-5 h-5 text-gray-400" />
+                        <button className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                            <Bell className="w-5 h-5 text-slate-500 dark:text-slate-400" />
                             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
                         </button>
 
-                        <button className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/10 transition-colors">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
-                                JD
+                        <button className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-medium shadow-md">
+                                SA
                             </div>
                         </button>
                     </div>
@@ -122,7 +122,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {/* Sidebar - Desktop & Mobile */}
             <aside className={cn(
-                "fixed top-16 left-0 bottom-0 w-64 bg-black border-r border-gray-800 z-40 transition-transform duration-300",
+                "fixed top-16 left-0 bottom-0 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 z-40 transition-transform duration-300 shadow-sm",
                 "lg:translate-x-0",
                 mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
             )}>
@@ -137,8 +137,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                 className={cn(
                                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
                                     isActive
-                                        ? "bg-white/10 text-white"
-                                        : "text-gray-400 hover:bg-white/5 hover:text-white"
+                                        ? "bg-blue-600 text-white shadow-md"
+                                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white"
                                 )}
                             >
                                 <item.icon className="w-5 h-5" />
@@ -149,8 +149,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </nav>
 
                 {/* Bottom section */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-800">
-                    <button className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm font-medium text-gray-400 hover:bg-white/5 hover:text-white transition-colors">
+                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-200 dark:border-slate-700">
+                    <button className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors">
                         <LogOut className="w-5 h-5" />
                         Log out
                     </button>
@@ -166,4 +166,3 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
     )
 }
-

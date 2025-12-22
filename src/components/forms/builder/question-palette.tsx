@@ -89,15 +89,15 @@ const questionCategories = [
 
 export function QuestionPalette({ onAddQuestion }: QuestionPaletteProps) {
     return (
-        <div className="hidden md:block w-64 bg-black border-r border-gray-800 overflow-y-auto p-4 shrink-0">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-4">
+        <div className="hidden md:block w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 overflow-y-auto p-4 shrink-0">
+            <h3 className="font-semibold text-sm text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">
                 Question Types
             </h3>
 
             <div className="space-y-6">
                 {questionCategories.map((category) => (
                     <div key={category.name}>
-                        <h4 className="text-xs font-medium text-muted-foreground mb-2">
+                        <h4 className="text-xs font-medium text-slate-400 dark:text-slate-500 mb-2">
                             {category.name}
                         </h4>
                         <div className="space-y-1">
@@ -105,10 +105,10 @@ export function QuestionPalette({ onAddQuestion }: QuestionPaletteProps) {
                                 <button
                                     key={question.type}
                                     onClick={() => onAddQuestion(question.type)}
-                                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-white/10 transition-colors text-left text-white"
+                                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors text-left text-slate-700 dark:text-slate-200"
                                 >
-                                    <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center shrink-0">
-                                        <question.icon className="w-4 h-4 text-gray-400" />
+                                    <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-slate-600 flex items-center justify-center shrink-0">
+                                        <question.icon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                     </div>
                                     <span className="font-medium">{question.label}</span>
                                 </button>
