@@ -3,8 +3,10 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Upload, FileJson, CheckCircle, AlertCircle, Loader2, X } from "lucide-react"
+import { Upload, FileJson, CheckCircle, AlertCircle, Loader2, X, FileSpreadsheet } from "lucide-react"
 import { useRouter } from "next/navigation"
+
+type ImportFormat = 'json' | 'csv'
 
 interface ImportResult {
     success: boolean
@@ -12,7 +14,9 @@ interface ImportResult {
         id: string
         title: string
         slug: string
-        sectionsCount: number
+        sectionsCount?: number
+        fieldsCount?: number
+        responsesCreated?: number
     }
     error?: string
     details?: string[] | string
@@ -23,14 +27,26 @@ export function JsonImportDialog({ onClose }: { onClose: () => void }) {
     const [isUploading, setIsUploading] = useState(false)
     const [result, setResult] = useState<ImportResult | null>(null)
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
+    const [importFormat, setImportFormat] = useState<ImportFormat>('json')
+    const [csvTitle, setCsvTitle] = useState('')
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0]
-        if (file && file.type === "application/json") {
+        if (!file) return
+
+        const isJson = file.type === "application/json" || file.name.endsWith('.json')
+        const isCsv = file.type === "text/csv" || file.name.endsWith('.csv')
+
+        if (isJson) {
+            setImportFormat('json')
+            setSelectedFile(file)
+            setResult(null)
+        } else if (isCsv) {
+            setImportFormat('csv')
             setSelectedFile(file)
             setResult(null)
         } else {
-            alert("Please select a valid JSON file")
+            alert("Please select a valid JSON or CSV file")
         }
     }
 
@@ -41,16 +57,29 @@ export function JsonImportDialog({ onClose }: { onClose: () => void }) {
         setResult(null)
 
         try {
-            // Read file content
-            const fileContent = await selectedFile.text()
-            const jsonData = JSON.parse(fileContent)
+            let response: Response
 
-            // Send to API
-            const response = await fetch('/api/forms/import-json', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(jsonData)
-            })
+            if (importFormat === 'json') {
+                // JSON import
+                const fileContent = await selectedFile.text()
+                const jsonData = JSON.parse(fileContent)
+
+                response = await fetch('/api/forms/import-json', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(jsonData)
+                })
+            } else {
+                // CSV import
+                const formData = new FormData()
+                formData.append('file', selectedFile)
+                formData.append('title', csvTitle || selectedFile.name.replace('.csv', ''))
+
+                response = await fetch('/api/forms/import-csv', {
+                    method: 'POST',
+                    body: formData
+                })
+            }
 
             const data: ImportResult = await response.json()
             setResult(data)
@@ -64,7 +93,7 @@ export function JsonImportDialog({ onClose }: { onClose: () => void }) {
         } catch (error) {
             setResult({
                 success: false,
-                error: 'Failed to parse or import JSON file',
+                error: `Failed to parse or import ${importFormat.toUpperCase()} file`,
                 details: error instanceof Error ? error.message : 'Unknown error'
             })
         } finally {
@@ -81,9 +110,9 @@ export function JsonImportDialog({ onClose }: { onClose: () => void }) {
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
-                            <CardTitle className="text-slate-900 dark:text-white">Import Form from JSON</CardTitle>
+                            <CardTitle className="text-slate-900 dark:text-white">Import Form</CardTitle>
                             <CardDescription className="text-slate-500 dark:text-slate-400">
-                                Upload a JSON file with sectioned form structure
+                                Upload a JSON or CSV file to create a form
                             </CardDescription>
                         </div>
                         <Button variant="ghost" size="icon" onClick={onClose}>
@@ -96,18 +125,22 @@ export function JsonImportDialog({ onClose }: { onClose: () => void }) {
                     {!result && (
                         <>
                             <label
-                                htmlFor="json-upload"
+                                htmlFor="file-upload"
                                 className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-slate-50 dark:bg-slate-900"
                             >
                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                     {selectedFile ? (
                                         <>
-                                            <FileJson className="w-10 h-10 mb-2 text-blue-600 dark:text-blue-400" />
+                                            {importFormat === 'json' ? (
+                                                <FileJson className="w-10 h-10 mb-2 text-blue-600 dark:text-blue-400" />
+                                            ) : (
+                                                <FileSpreadsheet className="w-10 h-10 mb-2 text-green-600 dark:text-green-400" />
+                                            )}
                                             <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
                                                 {selectedFile.name}
                                             </p>
                                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                                                {(selectedFile.size / 1024).toFixed(2)} KB
+                                                {(selectedFile.size / 1024).toFixed(2)} KB • {importFormat.toUpperCase()}
                                             </p>
                                         </>
                                     ) : (
@@ -117,20 +150,36 @@ export function JsonImportDialog({ onClose }: { onClose: () => void }) {
                                                 Click to upload or drag and drop
                                             </p>
                                             <p className="text-xs text-slate-400 dark:text-slate-500">
-                                                JSON files only
+                                                JSON or CSV files
                                             </p>
                                         </>
                                     )}
                                 </div>
                                 <input
-                                    id="json-upload"
+                                    id="file-upload"
                                     type="file"
-                                    accept="application/json,.json"
+                                    accept="application/json,.json,text/csv,.csv"
                                     className="hidden"
                                     onChange={handleFileSelect}
                                     disabled={isUploading}
                                 />
                             </label>
+
+                            {/* CSV Title Input */}
+                            {importFormat === 'csv' && selectedFile && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                                        Form Title
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={csvTitle}
+                                        onChange={(e) => setCsvTitle(e.target.value)}
+                                        placeholder={selectedFile.name.replace('.csv', '')}
+                                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                                    />
+                                </div>
+                            )}
 
                             <div className="flex justify-end gap-2">
                                 <Button variant="outline" onClick={onClose} disabled={isUploading}>
@@ -164,7 +213,10 @@ export function JsonImportDialog({ onClose }: { onClose: () => void }) {
                                             Import Successful!
                                         </h4>
                                         <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                                            "{result.data?.title}" with {result.data?.sectionsCount} sections
+                                            "{result.data?.title}"
+                                            {result.data?.sectionsCount && ` with ${result.data.sectionsCount} sections`}
+                                            {result.data?.fieldsCount && ` with ${result.data.fieldsCount} fields`}
+                                            {result.data?.responsesCreated ? ` (${result.data.responsesCreated} responses imported)` : ''}
                                         </p>
                                         <p className="text-xs text-green-600 dark:text-green-400 mt-2">
                                             Redirecting to form editor...

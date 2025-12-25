@@ -88,18 +88,15 @@ export default function FormsPage() {
 
     const handleDuplicate = async (form: Form) => {
         try {
-            const response = await fetch('/api/forms', {
+            const response = await fetch(`/api/forms/${form.id}/duplicate`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: `${form.title} (copy)`,
-                    description: form.description,
-                }),
             })
             const result = await response.json()
             if (result.success) {
-                setForms([...forms, result.data])
-                alert('Form duplicated!')
+                setForms([result.data, ...forms])
+                alert('Form duplicated successfully!')
+            } else {
+                alert(result.error || 'Failed to duplicate form')
             }
         } catch {
             alert('Failed to duplicate form')
