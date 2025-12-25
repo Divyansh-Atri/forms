@@ -72,8 +72,14 @@ export default function FormsPage() {
         fetchForms()
 
         // Refresh when window regains focus (user navigates back)
+        // But don't refresh if dialog is open (would cause file selection to reset)
         const handleFocus = () => {
-            fetchForms()
+            // Check if dialog is open by checking for any modal in the DOM
+            const hasOpenModal = document.querySelector('[role="dialog"]') ||
+                document.querySelector('.fixed.inset-0')
+            if (!hasOpenModal) {
+                fetchForms()
+            }
         }
 
         window.addEventListener('focus', handleFocus)
