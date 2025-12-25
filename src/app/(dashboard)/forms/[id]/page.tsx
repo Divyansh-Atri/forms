@@ -108,7 +108,26 @@ export default function FormEditorPage() {
                 const result = await response.json()
 
                 if (result.success) {
-                    setForm(result.data)
+                    const formData = result.data
+
+                    // If form has sections, merge all section questions into questions array
+                    if (formData.formSections && formData.formSections.length > 0) {
+                        const allQuestions: Question[] = []
+                        formData.formSections.forEach((section: any) => {
+                            if (section.questions && Array.isArray(section.questions)) {
+                                section.questions.forEach((q: any) => {
+                                    allQuestions.push({
+                                        ...q,
+                                        sectionId: section.id,
+                                        sectionTitle: section.title
+                                    })
+                                })
+                            }
+                        })
+                        formData.questions = allQuestions.length > 0 ? allQuestions : formData.questions
+                    }
+
+                    setForm(formData)
                 } else {
                     console.error('Failed to load form:', result.error)
                 }
