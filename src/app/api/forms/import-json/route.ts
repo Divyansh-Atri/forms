@@ -1,29 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { cookies } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { validateSectionedFormJSON, convertSectionFieldToQuestion } from '@/types/sections'
 
 export async function POST(request: NextRequest) {
     try {
-        // Check authentication
-        const session = await getServerSession(authOptions)
-        if (!session?.user?.email) {
+        // Check authentication via cookies
+        const cookieStore = await cookies()
+        const userId = cookieStore.get('user-id')?.value
+        const workspaceId = cookieStore.get('workspace-id')?.value
+
+        if (!userId || !workspaceId) {
             return NextResponse.json(
                 { success: false, error: 'Unauthorized' },
                 { status: 401 }
-            )
-        }
-
-        // Get user from database
-        const user = await prisma.user.findUnique({
-            where: { email: session.user.email }
-        })
-
-        if (!user) {
-            return NextResponse.json(
-                { success: false, error: 'User not found' },
-                { status: 404 }
             )
         }
 
@@ -63,8 +53,8 @@ export async function POST(request: NextRequest) {
                 description: jsonData.description || '',
                 slug,
                 status: 'DRAFT',
-                createdById: user.id,
-                workspaceId: user.id, // Using user ID as workspace for now
+                createdById: userId,
+                workspaceId: workspaceId,
                 // Create sections
                 formSections: {
                     create: jsonData.sections.map((section: any, sectionIndex: number) => {
