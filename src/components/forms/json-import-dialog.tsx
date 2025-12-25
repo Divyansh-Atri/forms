@@ -22,6 +22,8 @@ interface ImportResult {
     details?: string[] | string
 }
 
+type FormLayoutType = 'stepper' | 'table'
+
 export function JsonImportDialog({ onClose }: { onClose: () => void }) {
     const router = useRouter()
     const [isUploading, setIsUploading] = useState(false)
@@ -29,6 +31,7 @@ export function JsonImportDialog({ onClose }: { onClose: () => void }) {
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [importFormat, setImportFormat] = useState<ImportFormat>('json')
     const [csvTitle, setCsvTitle] = useState('')
+    const [layoutType, setLayoutType] = useState<FormLayoutType>('stepper')
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0]
@@ -64,6 +67,9 @@ export function JsonImportDialog({ onClose }: { onClose: () => void }) {
                 const fileContent = await selectedFile.text()
                 const jsonData = JSON.parse(fileContent)
 
+                // Add layout type to the data
+                jsonData.layoutType = layoutType
+
                 response = await fetch('/api/forms/import-json', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -74,6 +80,7 @@ export function JsonImportDialog({ onClose }: { onClose: () => void }) {
                 const formData = new FormData()
                 formData.append('file', selectedFile)
                 formData.append('title', csvTitle || selectedFile.name.replace('.csv', ''))
+                formData.append('layoutType', layoutType)
 
                 response = await fetch('/api/forms/import-csv', {
                     method: 'POST',
@@ -178,6 +185,43 @@ export function JsonImportDialog({ onClose }: { onClose: () => void }) {
                                         placeholder={selectedFile.name.replace('.csv', '')}
                                         className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                                     />
+                                </div>
+                            )}
+
+                            {/* Layout Type Selector */}
+                            {selectedFile && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
+                                        Form Display Type
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setLayoutType('stepper')}
+                                            className={`p-4 border-2 rounded-lg text-left transition-all ${layoutType === 'stepper'
+                                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                                    : 'border-slate-300 dark:border-slate-600 hover:border-slate-400'
+                                                }`}
+                                        >
+                                            <div className="font-medium text-slate-900 dark:text-white">📋 Stepper</div>
+                                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                                One question at a time, wizard-style
+                                            </div>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setLayoutType('table')}
+                                            className={`p-4 border-2 rounded-lg text-left transition-all ${layoutType === 'table'
+                                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                                    : 'border-slate-300 dark:border-slate-600 hover:border-slate-400'
+                                                }`}
+                                        >
+                                            <div className="font-medium text-slate-900 dark:text-white">📊 Table</div>
+                                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                                Spreadsheet-style, all fields visible
+                                            </div>
+                                        </button>
+                                    </div>
                                 </div>
                             )}
 

@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
                 description: jsonData.description || '',
                 slug,
                 status: 'DRAFT',
+                layoutType: jsonData.layoutType || 'stepper',
                 createdById: userId,
                 workspaceId: workspaceId,
                 // Create sections

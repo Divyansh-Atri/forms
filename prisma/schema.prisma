@@ -158,6 +158,9 @@ model Form {
   isQuiz        Boolean    @default(false)
   quizSettings  Json?
   
+  // Form layout type (stepper = one question at a time, table = spreadsheet style)
+  layoutType    String     @default("stepper")
+  
   // Access control
   accessType    String     @default("public") // public, password, restricted
   password      String?

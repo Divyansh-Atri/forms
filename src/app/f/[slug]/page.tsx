@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { SectionStepper } from "@/components/forms/section-stepper"
+import { TableForm } from "@/components/forms/table-form"
 import { FileText, CheckCircle, Loader2, Upload } from "lucide-react"
 
 interface FormQuestion {
@@ -32,6 +33,7 @@ interface FormData {
     description: string
     slug: string
     questions: FormQuestion[]
+    layoutType?: 'stepper' | 'table'
     formSections?: Array<{
         id: string
         title: string
@@ -168,10 +170,21 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-            <div className="max-w-2xl mx-auto min-h-screen flex flex-col py-8 px-4">
-                {/* Check if form has sections */}
-                {form.formSections && form.formSections.length > 0 ? (
-                    // Sectioned Form - Use Stepper
+            {/* Check if form uses table layout */}
+            {form.layoutType === 'table' && form.formSections && form.formSections.length > 0 ? (
+                // Table Layout - Spreadsheet style
+                <TableForm
+                    sections={form.formSections}
+                    formTitle={form.title}
+                    formDescription={form.description}
+                    responseData={answers}
+                    onDataChange={setAnswers}
+                    onSubmit={handleSubmit}
+                    isSubmitting={isSubmitting}
+                />
+            ) : form.formSections && form.formSections.length > 0 ? (
+                // Sectioned Form - Use Stepper
+                <div className="max-w-2xl mx-auto min-h-screen flex flex-col py-8 px-4">
                     <SectionStepper
                         sections={form.formSections}
                         formTitle={form.title}
@@ -181,8 +194,10 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
                         onSubmit={handleSubmit}
                         isSubmitting={isSubmitting}
                     />
-                ) : (
-                    // Regular Form - Use Original Flow
+                </div>
+            ) : (
+                <div className="max-w-2xl mx-auto min-h-screen flex flex-col py-8 px-4">
+                    {/* Regular Form - Use Original Flow */}
                     <>
                         {/* Progress Bar */}
                         {currentStep > 0 && currentStep <= totalQuestions && (
@@ -284,8 +299,8 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
                             </p>
                         </div>
                     </>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     )
 }
