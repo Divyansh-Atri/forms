@@ -8,12 +8,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Sanjeev Atri - Modern Form Builder",
+  title: "Sanjeev Atri",
   description: "Create beautiful, powerful forms with ease. Features include conditional logic, quiz mode, analytics, and more.",
   keywords: ["forms", "surveys", "form builder", "Google Forms alternative"],
   authors: [{ name: "Sanjeev Atri" }],
   openGraph: {
-    title: "Sanjeev Atri - Modern Form Builder",
+    title: "Sanjeev Atri",
     description: "Create beautiful, powerful forms with ease",
     type: "website",
   },
