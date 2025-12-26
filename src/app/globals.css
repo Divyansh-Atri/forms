@@ -1,51 +1,79 @@
 @import "tailwindcss";
 
+/* ============================= */
+/* THEME VARIABLES               */
+/* ============================= */
+
 @theme {
-  /* Light mode - Blue & White theme */
-  --color-background: hsl(210 100% 99%);
-  --color-foreground: hsl(222 47% 11%);
+  /* Light mode – clean blue & white */
+  --color-background: hsl(210 100% 98%);
+  --color-foreground: hsl(215 30% 20%);
+
   --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(222 47% 11%);
+  --color-card-foreground: hsl(215 30% 20%);
+
   --color-popover: hsl(0 0% 100%);
-  --color-popover-foreground: hsl(222 47% 11%);
-  --color-primary: hsl(217 91% 50%);
+  --color-popover-foreground: hsl(215 30% 20%);
+
+  --color-primary: hsl(214 90% 55%);
   --color-primary-foreground: hsl(0 0% 100%);
-  --color-secondary: hsl(210 40% 96%);
-  --color-secondary-foreground: hsl(222 47% 11%);
-  --color-muted: hsl(210 40% 96%);
-  --color-muted-foreground: hsl(215 16% 47%);
-  --color-accent: hsl(210 40% 96%);
-  --color-accent-foreground: hsl(222 47% 11%);
-  --color-destructive: hsl(0 84% 60%);
+
+  --color-secondary: hsl(210 60% 96%);
+  --color-secondary-foreground: hsl(215 30% 25%);
+
+  --color-muted: hsl(210 60% 95%);
+  --color-muted-foreground: hsl(215 20% 45%);
+
+  --color-accent: hsl(210 60% 96%);
+  --color-accent-foreground: hsl(215 30% 25%);
+
+  --color-destructive: hsl(0 75% 60%);
   --color-destructive-foreground: hsl(0 0% 100%);
-  --color-border: hsl(214 32% 91%);
-  --color-input: hsl(214 32% 91%);
-  --color-ring: hsl(217 91% 50%);
+
+  --color-border: hsl(210 40% 90%);
+  --color-input: hsl(210 40% 94%);
+  --color-ring: hsl(214 90% 55%);
+
   --radius: 0.75rem;
 }
 
-/* Dark mode - Deep Blue theme with WHITE text */
+/* ============================= */
+/* DARK MODE – SOFT BLUE (NO BLACK) */
+/* ============================= */
+
 .dark {
-  --color-background: hsl(222 47% 8%);
-  --color-foreground: hsl(0 0% 100%);
-  --color-card: hsl(222 47% 12%);
-  --color-card-foreground: hsl(0 0% 100%);
-  --color-popover: hsl(222 47% 12%);
-  --color-popover-foreground: hsl(0 0% 100%);
-  --color-primary: hsl(217 91% 60%);
+  --color-background: hsl(220 40% 12%);
+  --color-foreground: hsl(210 40% 96%);
+
+  --color-card: hsl(220 35% 16%);
+  --color-card-foreground: hsl(210 40% 96%);
+
+  --color-popover: hsl(220 35% 16%);
+  --color-popover-foreground: hsl(210 40% 96%);
+
+  --color-primary: hsl(214 90% 65%);
   --color-primary-foreground: hsl(0 0% 100%);
-  --color-secondary: hsl(217 33% 20%);
-  --color-secondary-foreground: hsl(0 0% 100%);
-  --color-muted: hsl(217 33% 17%);
-  --color-muted-foreground: hsl(215 20% 65%);
-  --color-accent: hsl(217 33% 20%);
-  --color-accent-foreground: hsl(0 0% 100%);
-  --color-destructive: hsl(0 63% 50%);
+
+  --color-secondary: hsl(220 30% 22%);
+  --color-secondary-foreground: hsl(210 40% 96%);
+
+  --color-muted: hsl(220 30% 20%);
+  --color-muted-foreground: hsl(215 20% 70%);
+
+  --color-accent: hsl(220 30% 22%);
+  --color-accent-foreground: hsl(210 40% 96%);
+
+  --color-destructive: hsl(0 65% 55%);
   --color-destructive-foreground: hsl(0 0% 100%);
-  --color-border: hsl(217 33% 25%);
-  --color-input: hsl(217 33% 20%);
-  --color-ring: hsl(217 91% 60%);
+
+  --color-border: hsl(220 30% 26%);
+  --color-input: hsl(220 30% 22%);
+  --color-ring: hsl(214 90% 65%);
 }
+
+/* ============================= */
+/* GLOBAL RESETS                 */
+/* ============================= */
 
 * {
   border-color: var(--color-border);
@@ -57,35 +85,29 @@ body {
   font-feature-settings: "rlig" 1, "calt" 1;
 }
 
-/* Ensure all text is visible */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-p,
-span,
-label,
-a {
+/* Headings & text inherit clean color */
+h1, h2, h3, h4, h5, h6,
+p, span, label, a {
   color: inherit;
 }
 
-/* Input styling for visibility */
+/* ============================= */
+/* INPUTS & FORMS                */
+/* ============================= */
+
 input,
 textarea,
 select {
-  color: var(--color-foreground);
   background-color: var(--color-input);
+  color: var(--color-foreground);
+  border-radius: var(--radius);
 }
 
 input::placeholder,
 textarea::placeholder {
   color: var(--color-muted-foreground);
-  opacity: 0.8;
 }
 
-/* Better focus states with blue ring */
 input:focus,
 textarea:focus,
 select:focus {
@@ -93,129 +115,10 @@ select:focus {
   outline-offset: 2px;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
+/* ============================= */
+/* BUTTONS & LINKS               */
+/* ============================= */
 
-::-webkit-scrollbar-track {
-  background: var(--color-muted);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-primary);
-  border-radius: 4px;
-  opacity: 0.7;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(217 91% 45%);
-}
-
-/* Glassmorphism for light mode */
-.glass {
-  backdrop-filter: blur(12px) saturate(180%);
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-}
-
-.dark .glass {
-  background: rgba(30, 41, 59, 0.85);
-  border: 1px solid rgba(96, 165, 250, 0.2);
-}
-
-/* Animation utilities */
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.3s ease-out;
-}
-
-.animate-slide-up {
-  animation: slide-up 0.4s ease-out;
-}
-
-.animate-scale-in {
-  animation: scale-in 0.2s ease-out;
-}
-
-/* Gradient text - Blue theme */
-.gradient-text {
-  background: linear-gradient(135deg, hsl(217 91% 50%) 0%, hsl(199 89% 48%) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-weight: 700;
-}
-
-.dark .gradient-text {
-  background: linear-gradient(135deg, hsl(217 91% 70%) 0%, hsl(199 89% 68%) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Loading skeleton */
-.skeleton {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  background-color: var(--color-muted);
-  border-radius: 0.25rem;
-}
-
-@keyframes pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: .5;
-  }
-}
-
-/* Card styling */
-.card {
-  background-color: var(--color-card);
-  color: var(--color-card-foreground);
-  border: 1px solid var(--color-border);
-}
-
-/* Ensure buttons are always visible */
 button {
   color: inherit;
 }
@@ -225,7 +128,6 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* Links always visible */
 a {
   color: var(--color-primary);
   text-decoration: none;
@@ -235,97 +137,100 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Fix for gray backgrounds */
-.bg-gray-50 {
-  background-color: hsl(210 40% 98%) !important;
-}
-
-.dark .bg-gray-50 {
-  background-color: hsl(217 33% 17%) !important;
-}
-
-.bg-gray-100 {
-  background-color: hsl(210 40% 96%) !important;
-}
-
-.dark .bg-gray-100 {
-  background-color: hsl(217 33% 20%) !important;
-}
-
-/* Ensure borders are visible */
-.border {
-  border-color: var(--color-border) !important;
-}
-
-.border-2 {
-  border-width: 2px !important;
-  border-color: var(--color-border) !important;
-}
-
-/* Fix for dashed borders */
-.border-dashed {
-  border-style: dashed !important;
-  border-color: var(--color-muted-foreground) !important;
-}
-
-/* Primary button styling - Blue with white text */
+/* Primary buttons */
 .bg-primary {
   background-color: var(--color-primary) !important;
   color: var(--color-primary-foreground) !important;
 }
 
 .bg-primary:hover {
-  background-color: hsl(217 91% 45%) !important;
-  color: var(--color-primary-foreground) !important;
+  background-color: hsl(214 90% 48%) !important;
 }
 
-/* White/light backgrounds stay visible in dark mode */
-.dark .bg-white {
-  background-color: hsl(217 33% 20%) !important;
-  color: var(--color-foreground) !important;
+/* ============================= */
+/* CARDS & SURFACES              */
+/* ============================= */
+
+.card {
+  background-color: var(--color-card);
+  color: var(--color-card-foreground);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
 }
 
-/* Outline buttons with proper text */
-.dark .border-input {
-  border-color: var(--color-border) !important;
-  color: var(--color-foreground) !important;
+/* ============================= */
+/* GLASS EFFECT                  */
+/* ============================= */
+
+.glass {
+  backdrop-filter: blur(14px) saturate(160%);
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
-/* Dropdown and menu styling */
-.dark [role="menu"],
-.dark [role="listbox"] {
-  background-color: var(--color-popover) !important;
-  color: var(--color-popover-foreground) !important;
-  border-color: var(--color-border) !important;
+.dark .glass {
+  background: rgba(30, 58, 95, 0.75);
+  border: 1px solid rgba(96, 165, 250, 0.25);
 }
 
-/* Badge visibility */
-.dark .badge,
-.dark [class*="badge"] {
-  color: var(--color-foreground);
+/* ============================= */
+/* GRADIENT TEXT                 */
+/* ============================= */
+
+.gradient-text {
+  background: linear-gradient(
+    135deg,
+    hsl(214 90% 55%),
+    hsl(199 90% 55%)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 700;
 }
 
-/* Table styling for dark mode */
-.dark table {
-  color: var(--color-foreground);
+/* ============================= */
+/* SCROLLBAR                     */
+/* ============================= */
+
+::-webkit-scrollbar {
+  width: 10px;
 }
 
-.dark th,
-.dark td {
-  border-color: var(--color-border);
-  color: inherit;
+::-webkit-scrollbar-track {
+  background: var(--color-muted);
 }
 
-/* Ensure form labels are visible */
-.dark label {
-  color: var(--color-foreground);
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 4px;
 }
 
-/* Icon buttons visible */
-.dark .text-muted-foreground {
-  color: var(--color-muted-foreground) !important;
+/* ============================= */
+/* ANIMATIONS                    */
+/* ============================= */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.dark .hover\:text-foreground:hover {
-  color: var(--color-foreground) !important;
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in { animation: fade-in 0.25s ease-out; }
+.animate-slide-up { animation: slide-up 0.35s ease-out; }
+
+/* ============================= */
+/* SKELETON                      */
+/* ============================= */
+
+.skeleton {
+  background-color: var(--color-muted);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% { opacity: 0.5; }
 }
