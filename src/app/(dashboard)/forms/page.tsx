@@ -156,8 +156,8 @@ export default function FormsPage() {
 
     if (error) {
         return (
-            <Card className="p-12 text-center bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                <p className="text-red-500 mb-4">{error}</p>
+            <Card className="p-12 text-center bg-card border-border">
+                <p className="text-destructive mb-4">{error}</p>
                 <Button onClick={() => window.location.reload()}>Retry</Button>
             </Card>
         )
@@ -168,8 +168,8 @@ export default function FormsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Forms</h1>
-                    <p className="text-slate-500 dark:text-slate-400">Create and manage your forms</p>
+                    <h1 className="text-2xl font-bold text-foreground">Forms</h1>
+                    <p className="text-muted-foreground">Create and manage your forms</p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => setShowImportDialog(true)}>
@@ -188,12 +188,12 @@ export default function FormsPage() {
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                         placeholder="Search forms..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white"
+                        className="pl-9"
                     />
                 </div>
                 <div className="flex gap-2">
@@ -212,10 +212,10 @@ export default function FormsPage() {
 
             {/* Forms Grid */}
             {filteredForms.length === 0 ? (
-                <Card className="p-12 text-center bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                    <FileText className="w-12 h-12 mx-auto text-slate-400 dark:text-slate-500 mb-4" />
-                    <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-white">No forms found</h3>
-                    <p className="text-slate-500 dark:text-slate-400 mb-4">
+                <Card className="p-12 text-center bg-card border-border">
+                    <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2 text-foreground">No forms found</h3>
+                    <p className="text-muted-foreground mb-4">
                         {searchQuery ? "Try adjusting your search" : "Create your first form to get started"}
                     </p>
                     <Link href="/forms/new">
@@ -230,52 +230,52 @@ export default function FormsPage() {
                     {filteredForms.map((form) => {
                         const status = statusConfig[form.status as keyof typeof statusConfig] || statusConfig.DRAFT
                         return (
-                            <Card key={form.id} hover className="overflow-hidden bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                            <Card key={form.id} hover className="overflow-hidden bg-card border-border">
                                 <div className="p-5">
                                     <div className="flex items-start justify-between mb-3">
                                         <div className="flex-1 min-w-0">
                                             <Link href={`/forms/${form.id}`}>
-                                                <h3 className="font-semibold truncate text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                                                <h3 className="font-semibold truncate text-foreground hover:text-primary transition-colors">
                                                     {form.title}
                                                 </h3>
                                             </Link>
-                                            <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mt-1">
+                                            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
                                                 {form.description}
                                             </p>
                                         </div>
                                         <div className="relative">
                                             <button
-                                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
+                                                className="p-1 rounded hover:bg-accent"
                                                 onClick={(e) => {
                                                     e.stopPropagation()
                                                     setOpenMenu(openMenu === form.id ? null : form.id)
                                                 }}
                                             >
-                                                <MoreVertical className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                                                <MoreVertical className="w-4 h-4 text-muted-foreground" />
                                             </button>
                                             {openMenu === form.id && (
-                                                <div className="absolute right-0 top-full mt-1 w-32 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-10">
+                                                <div className="absolute right-0 top-full mt-1 w-32 bg-card border border-border rounded-lg shadow-lg z-10">
                                                     <Link
                                                         href={`/forms/${form.id}`}
-                                                        className="block px-3 py-2 text-sm text-white hover:bg-slate-700 rounded-t-lg"
+                                                        className="block px-3 py-2 text-sm text-foreground hover:bg-accent rounded-t-lg"
                                                         onClick={() => setOpenMenu(null)}
                                                     >
                                                         Edit
                                                     </Link>
                                                     <button
-                                                        className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-slate-700"
+                                                        className="block w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent"
                                                         onClick={() => handleDuplicate(form)}
                                                     >
                                                         Duplicate
                                                     </button>
                                                     <button
-                                                        className="block w-full text-left px-3 py-2 text-sm text-white hover:bg-slate-700"
+                                                        className="block w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent"
                                                         onClick={() => handleTogglePublish(form)}
                                                     >
                                                         {form.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
                                                     </button>
                                                     <button
-                                                        className="block w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-900/30 rounded-b-lg"
+                                                        className="block w-full text-left px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-b-lg"
                                                         onClick={() => handleDelete(form.id, form.title)}
                                                     >
                                                         Delete
@@ -292,7 +292,7 @@ export default function FormsPage() {
                                         </Badge>
                                     </div>
 
-                                    <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
+                                    <div className="flex items-center justify-between text-sm text-muted-foreground">
                                         <div className="flex items-center gap-1">
                                             <BarChart3 className="w-4 h-4" />
                                             <span>{(form as any)._count?.responses || 0} responses</span>
@@ -305,21 +305,21 @@ export default function FormsPage() {
                                 </div>
 
                                 {/* Actions */}
-                                <div className="flex border-t border-slate-200 dark:border-slate-600 divide-x divide-slate-200 dark:divide-slate-600">
+                                <div className="flex border-t border-border divide-x divide-border">
                                     <Link href={`/forms/${form.id}`} className="flex-1">
-                                        <button className="w-full py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1.5">
+                                        <button className="w-full py-2.5 text-sm text-muted-foreground hover:text-primary hover:bg-accent transition-colors flex items-center justify-center gap-1.5">
                                             <Edit3 className="w-4 h-4" />
                                             Edit
                                         </button>
                                     </Link>
                                     <Link href={`/forms/${form.id}/responses`} className="flex-1">
-                                        <button className="w-full py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1.5">
+                                        <button className="w-full py-2.5 text-sm text-muted-foreground hover:text-primary hover:bg-accent transition-colors flex items-center justify-center gap-1.5">
                                             <BarChart3 className="w-4 h-4" />
                                             Responses
                                         </button>
                                     </Link>
                                     <button
-                                        className="flex-1 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1.5"
+                                        className="flex-1 py-2.5 text-sm text-muted-foreground hover:text-primary hover:bg-accent transition-colors flex items-center justify-center gap-1.5"
                                         onClick={() => {
                                             const url = `${window.location.origin}/f/${form.id}`
                                             navigator.clipboard.writeText(url)
