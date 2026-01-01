@@ -28,9 +28,6 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en" suppressHydrationWarning>
-            <head>
-                <link rel="icon" href="/f/favicon.ico" type="image/x-icon" />
-            </head>
             <body className={`${inter.variable} font-sans antialiased`}>
                 {children}
                 <SpeedInsights />
