@@ -16,7 +16,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
                 {label && (
                     <label
                         htmlFor={textareaId}
-                        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+                        className="block text-sm font-semibold text-foreground mb-2"
                     >
                         {label}
                     </label>
@@ -24,21 +24,21 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
                 <textarea
                     id={textareaId}
                     className={cn(
-                        "flex min-h-[100px] w-full rounded-lg border bg-background px-4 py-3 text-sm transition-all duration-200",
-                        "placeholder:text-muted-foreground",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
-                        "disabled:cursor-not-allowed disabled:opacity-50",
+                        "flex min-h-[120px] w-full rounded-lg border-[1.5px] bg-white px-4 py-3 text-[0.9375rem] transition-all duration-200",
+                        "placeholder:text-muted-foreground placeholder:opacity-70",
+                        "focus-visible:outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 focus-visible:-translate-y-0.5",
+                        "disabled:cursor-not-allowed disabled:opacity-60 disabled:bg-muted",
                         "resize-y",
                         error
-                            ? "border-red-500 focus-visible:ring-red-500"
-                            : "border-input hover:border-gray-400",
+                            ? "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/10"
+                            : "border-border hover:border-gray-400",
                         className
                     )}
                     ref={ref}
                     {...props}
                 />
                 {error && (
-                    <p className="mt-1.5 text-sm text-red-500">{error}</p>
+                    <p className="mt-2 text-sm text-destructive font-medium">{error}</p>
                 )}
             </div>
         )

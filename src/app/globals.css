@@ -1,79 +1,94 @@
 @import "tailwindcss";
 
-/* ============================= */
-/* THEME VARIABLES               */
-/* ============================= */
+/* ========================================= */
+/*   PREMIUM LIGHT THEME - DESIGN SYSTEM    */
+/* ========================================= */
 
 @theme {
-  /* Light mode – clean blue & white */
-  --color-background: hsl(210 100% 98%);
-  --color-foreground: hsl(215 30% 20%);
+  /* ===== BACKGROUND & SURFACES ===== */
+  --color-background: hsl(210 20% 98%);
+  --color-foreground: hsl(215 28% 17%);
 
   --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(215 30% 20%);
+  --color-card-foreground: hsl(215 28% 17%);
 
   --color-popover: hsl(0 0% 100%);
-  --color-popover-foreground: hsl(215 30% 20%);
+  --color-popover-foreground: hsl(215 28% 17%);
 
-  --color-primary: hsl(214 90% 55%);
+  /* ===== PRIMARY BRAND COLOR ===== */
+  /* Sophisticated blue - professional yet approachable */
+  --color-primary: hsl(217 91% 60%);
   --color-primary-foreground: hsl(0 0% 100%);
 
-  --color-secondary: hsl(210 60% 96%);
-  --color-secondary-foreground: hsl(215 30% 25%);
+  /* ===== SECONDARY & ACCENT ===== */
+  --color-secondary: hsl(214 32% 95%);
+  --color-secondary-foreground: hsl(215 25% 27%);
 
-  --color-muted: hsl(210 60% 95%);
-  --color-muted-foreground: hsl(215 20% 45%);
+  --color-muted: hsl(210 24% 93%);
+  --color-muted-foreground: hsl(215 14% 48%);
 
-  --color-accent: hsl(210 60% 96%);
-  --color-accent-foreground: hsl(215 30% 25%);
+  --color-accent: hsl(213 35% 96%);
+  --color-accent-foreground: hsl(215 25% 27%);
 
-  --color-destructive: hsl(0 75% 60%);
+  /* ===== STATUS COLORS ===== */
+  --color-destructive: hsl(0 84% 60%);
   --color-destructive-foreground: hsl(0 0% 100%);
 
-  --color-border: hsl(210 40% 90%);
-  --color-input: hsl(210 40% 94%);
-  --color-ring: hsl(214 90% 55%);
+  --color-success: hsl(142 76% 36%);
+  --color-success-foreground: hsl(0 0% 100%);
 
-  --radius: 0.75rem;
+  --color-warning: hsl(38 92% 50%);
+  --color-warning-foreground: hsl(0 0% 100%);
+
+  /* ===== BORDERS & INPUTS ===== */
+  --color-border: hsl(214 24% 87%);
+  --color-input: hsl(0 0% 100%);
+  --color-ring: hsl(217 91% 60%);
+
+  /* ===== BORDER RADIUS ===== */
+  --radius: 0.625rem;
+  --radius-sm: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
 }
 
-/* ============================= */
-/* DARK MODE – SOFT BLUE (NO BLACK) */
-/* ============================= */
+/* ========================================= */
+/*              DARK MODE THEME             */
+/* ========================================= */
 
 .dark {
-  --color-background: hsl(220 40% 12%);
-  --color-foreground: hsl(210 40% 96%);
+  --color-background: hsl(222 47% 11%);
+  --color-foreground: hsl(210 40% 98%);
 
-  --color-card: hsl(220 35% 16%);
-  --color-card-foreground: hsl(210 40% 96%);
+  --color-card: hsl(222 47% 14%);
+  --color-card-foreground: hsl(210 40% 98%);
 
-  --color-popover: hsl(220 35% 16%);
-  --color-popover-foreground: hsl(210 40% 96%);
+  --color-popover: hsl(222 47% 14%);
+  --color-popover-foreground: hsl(210 40% 98%);
 
-  --color-primary: hsl(214 90% 65%);
+  --color-primary: hsl(217 91% 65%);
   --color-primary-foreground: hsl(0 0% 100%);
 
-  --color-secondary: hsl(220 30% 22%);
-  --color-secondary-foreground: hsl(210 40% 96%);
+  --color-secondary: hsl(222 47% 18%);
+  --color-secondary-foreground: hsl(210 40% 98%);
 
-  --color-muted: hsl(220 30% 20%);
-  --color-muted-foreground: hsl(215 20% 70%);
+  --color-muted: hsl(222 47% 16%);
+  --color-muted-foreground: hsl(215 20% 65%);
 
-  --color-accent: hsl(220 30% 22%);
-  --color-accent-foreground: hsl(210 40% 96%);
+  --color-accent: hsl(222 47% 18%);
+  --color-accent-foreground: hsl(210 40% 98%);
 
-  --color-destructive: hsl(0 65% 55%);
+  --color-destructive: hsl(0 84% 60%);
   --color-destructive-foreground: hsl(0 0% 100%);
 
-  --color-border: hsl(220 30% 26%);
-  --color-input: hsl(220 30% 22%);
-  --color-ring: hsl(214 90% 65%);
+  --color-border: hsl(222 47% 22%);
+  --color-input: hsl(222 47% 16%);
+  --color-ring: hsl(217 91% 65%);
 }
 
-/* ============================= */
-/* GLOBAL RESETS                 */
-/* ============================= */
+/* ========================================= */
+/*              GLOBAL STYLES               */
+/* ========================================= */
 
 * {
   border-color: var(--color-border);
@@ -83,44 +98,88 @@ body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Headings & text inherit clean color */
-h1, h2, h3, h4, h5, h6,
-p, span, label, a {
+/* Typography */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--color-foreground);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+p,
+span,
+label,
+a {
   color: inherit;
 }
 
-/* ============================= */
-/* INPUTS & FORMS                */
-/* ============================= */
+/* ========================================= */
+/*          FORM ELEMENTS - PREMIUM         */
+/* ========================================= */
 
+/* Input Fields */
 input,
 textarea,
 select {
   background-color: var(--color-input);
   color: var(--color-foreground);
   border-radius: var(--radius);
+  border: 1.5px solid var(--color-border);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 0.9375rem;
+  line-height: 1.5;
 }
 
 input::placeholder,
 textarea::placeholder {
   color: var(--color-muted-foreground);
+  opacity: 0.7;
 }
 
+/* Focus States - Elegant Blue Ring */
 input:focus,
 textarea:focus,
 select:focus {
-  outline: 2px solid var(--color-ring);
-  outline-offset: 2px;
+  outline: none;
+  border-color: var(--color-ring);
+  box-shadow: 0 0 0 3px hsla(217, 91%, 60%, 0.08),
+    0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transform: translateY(-1px);
 }
 
-/* ============================= */
-/* BUTTONS & LINKS               */
-/* ============================= */
+/* Hover States */
+input:hover:not(:focus):not(:disabled),
+textarea:hover:not(:focus):not(:disabled),
+select:hover:not(:focus):not(:disabled) {
+  border-color: hsl(214 24% 75%);
+}
+
+/* Disabled States */
+input:disabled,
+textarea:disabled,
+select:disabled {
+  background-color: var(--color-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ========================================= */
+/*         BUTTONS - REFINED & POLISHED     */
+/* ========================================= */
 
 button {
   color: inherit;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 button:disabled {
@@ -128,109 +187,240 @@ button:disabled {
   cursor: not-allowed;
 }
 
-a {
-  color: var(--color-primary);
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-}
-
-/* Primary buttons */
+/* Primary Button Enhancement */
 .bg-primary {
   background-color: var(--color-primary) !important;
   color: var(--color-primary-foreground) !important;
 }
 
-.bg-primary:hover {
-  background-color: hsl(214 90% 48%) !important;
+.bg-primary:hover:not(:disabled) {
+  background-color: hsl(217 91% 55%) !important;
+  box-shadow: 0 4px 12px hsla(217, 91%, 60%, 0.25);
+  transform: translateY(-1px);
 }
 
-/* ============================= */
-/* CARDS & SURFACES              */
-/* ============================= */
+.bg-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px hsla(217, 91%, 60%, 0.2);
+}
+
+/* ========================================= */
+/*           LINKS - SOPHISTICATED          */
+/* ========================================= */
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: hsl(217 91% 55%);
+  text-decoration: none;
+}
+
+/* ========================================= */
+/*        CARDS - PREMIUM ELEVATION         */
+/* ========================================= */
 
 .card {
   background-color: var(--color-card);
   color: var(--color-card-foreground);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03),
+    0 1px 2px 0 rgba(0, 0, 0, 0.02);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ============================= */
-/* GLASS EFFECT                  */
-/* ============================= */
+.card:hover {
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.05),
+    0 2px 4px 0 rgba(0, 0, 0, 0.03);
+}
+
+/* ========================================= */
+/*         GLASSMORPHISM - REFINED          */
+/* ========================================= */
 
 .glass {
-  backdrop-filter: blur(14px) saturate(160%);
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  backdrop-filter: blur(16px) saturate(180%);
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(214, 220, 234, 0.5);
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.04),
+    0 1px 2px 0 rgba(0, 0, 0, 0.02);
 }
 
 .dark .glass {
-  background: rgba(30, 58, 95, 0.75);
-  border: 1px solid rgba(96, 165, 250, 0.25);
+  background: rgba(28, 37, 54, 0.8);
+  border: 1px solid rgba(96, 165, 250, 0.2);
 }
 
-/* ============================= */
-/* GRADIENT TEXT                 */
-/* ============================= */
+/* ========================================= */
+/*          GRADIENT TEXT - VIBRANT         */
+/* ========================================= */
 
 .gradient-text {
-  background: linear-gradient(
-    135deg,
-    hsl(214 90% 55%),
-    hsl(199 90% 55%)
-  );
+  background: linear-gradient(135deg,
+      hsl(217 91% 60%) 0%,
+      hsl(200 98% 55%) 50%,
+      hsl(183 100% 50%) 100%);
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
-/* ============================= */
-/* SCROLLBAR                     */
-/* ============================= */
+/* ========================================= */
+/*        CUSTOM SCROLLBAR - ELEGANT        */
+/* ========================================= */
 
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 12px;
+  height: 12px;
 }
 
 ::-webkit-scrollbar-track {
   background: var(--color-muted);
+  border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-primary);
-  border-radius: 4px;
+  background: linear-gradient(180deg,
+      hsl(217 91% 60%),
+      hsl(217 91% 55%));
+  border-radius: 6px;
+  border: 2px solid var(--color-muted);
 }
 
-/* ============================= */
-/* ANIMATIONS                    */
-/* ============================= */
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg,
+      hsl(217 91% 55%),
+      hsl(217 91% 50%));
+}
+
+/* ========================================= */
+/*        ANIMATIONS - SMOOTH & POLISHED    */
+/* ========================================= */
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.animate-fade-in { animation: fade-in 0.25s ease-out; }
-.animate-slide-up { animation: slide-up 0.35s ease-out; }
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
 
-/* ============================= */
-/* SKELETON                      */
-/* ============================= */
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-slide-down {
+  animation: slide-down 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========================================= */
+/*         SKELETON LOADING - SMOOTH        */
+/* ========================================= */
 
 .skeleton {
-  background-color: var(--color-muted);
-  animation: pulse 1.8s ease-in-out infinite;
+  background: linear-gradient(90deg,
+      var(--color-muted) 0%,
+      hsl(210 24% 90%) 50%,
+      var(--color-muted) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 2s ease-in-out infinite;
+  border-radius: var(--radius);
 }
 
-@keyframes pulse {
-  50% { opacity: 0.5; }
+@keyframes skeleton-pulse {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ========================================= */
+/*       UTILITY CLASSES - PREMIUM          */
+/* ========================================= */
+
+.shadow-premium {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06),
+    0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.shadow-premium-lg {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08),
+    0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.border-premium {
+  border: 1.5px solid var(--color-border);
+}
+
+/* Form Section Dividers */
+.form-divider {
+  height: 1px;
+  background: linear-gradient(90deg,
+      transparent 0%,
+      var(--color-border) 20%,
+      var(--color-border) 80%,
+      transparent 100%);
+  margin: 2rem 0;
+}
+
+/* Premium Focus Ring */
+.focus-ring-premium:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px hsla(217, 91%, 60%, 0.1),
+    0 0 0 1px var(--color-ring);
 }
