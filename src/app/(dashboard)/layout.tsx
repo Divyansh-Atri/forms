@@ -25,11 +25,7 @@ interface DashboardLayoutProps {
 }
 
 const navItems = [
- { href: "/forms", label: "Forms", icon: FileText },
- { href: "/templates", label: "Templates", icon: LayoutDashboard },
- { href: "/team", label: "Team", icon: Users },
- { href: "/integrations", label: "Integrations", icon: Webhook },
- { href: "/settings", label: "Settings", icon: Settings },
+	{ href: "/forms", label: "Forms", icon: FileText },
 ]
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -56,11 +52,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
  </button>
 
  {/* Logo */}
- <Link href="/forms" className="flex items-center gap-2.5">
+		<Link href="/forms" className="flex items-center gap-2.5">
  <div className="w-9 h-9 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center shadow-sm">
  <FileText className="w-4.5 h-4.5 text-white" />
  </div>
- <span className="font-bold text-lg hidden sm:block text-foreground">SanjeevForms</span>
+			<span className="font-bold text-lg hidden sm:block text-foreground">sanjeevatri</span>
  </Link>
 
  {/* Workspace selector */}
@@ -121,11 +117,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
  )}
 
  {/* Sidebar - Desktop & Mobile */}
- <aside className={cn(
- "fixed top-16 left-0 bottom-0 w-64 bg-card border-r border-border z-40 transition-transform duration-300 shadow-sm",
- "lg:translate-x-0",
- mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
- )}>
+<aside className={cn(
+	"fixed top-16 left-0 bottom-0 w-64 bg-card border-r border-border z-40 transition-transform duration-300 shadow-md",
+	"lg:translate-x-0",
+	"rounded-r-2xl lg:rounded-none",
+	mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+)}>
  <nav className="p-4 space-y-1">
  {navItems.map((item) => {
  const isActive = pathname === item.href || pathname.startsWith(item.href + "/")

@@ -244,20 +244,16 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
  {form.description && (
  <p className="text-xl text-muted-foreground mb-12 leading-relaxed font-medium max-w-lg mx-auto">{form.description}</p>
  )}
- <div className="flex flex-col items-center gap-6">
- <Button size="xl" onClick={handleNext} className="h-16 px-12 text-xl shadow-premium hover:shadow-premium-lg group rounded-2xl">
- Start Adventure <ArrowRight className="w-6 h-6 ml-3 group-hover:translate-x-2 transition-transform" />
- </Button>
- <div className="flex items-center justify-center gap-8 text-sm text-muted-foreground font-bold uppercase tracking-widest">
- <div className="flex items-center gap-2">
- <Clock className="w-4 h-4 text-primary" /> 2 MINS
- </div>
- <div className="w-1.5 h-1.5 rounded-full bg-primary/20" />
- <div className="flex items-center gap-2">
- <Users className="w-4 h-4 text-primary" /> ANONYMOUS
- </div>
- </div>
- </div>
+					<div className="flex flex-col items-center gap-6">
+						<Button size="xl" onClick={handleNext} className="h-16 px-12 text-xl shadow-premium hover:shadow-premium-lg group rounded-2xl">
+							Start
+						</Button>
+						<div className="flex items-center justify-center gap-4 text-sm text-muted-foreground font-semibold tracking-wide">
+							<div className="flex items-center gap-2">
+								<Users className="w-4 h-4 text-primary" /> Anonymous
+							</div>
+						</div>
+					</div>
  </div>
  </Card>
  )}
@@ -344,14 +340,14 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
  <div className="mt-16 py-8 text-center animate-fade-in border-t border-gray-100/30">
  <Link href="/" className="inline-flex items-center gap-3 group opacity-70 hover:opacity-100 transition-opacity">
  <span className="text-sm font-bold text-muted-foreground group-hover:text-primary transition-colors tracking-tight uppercase">Created with</span>
- <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white shadow-premium border border-border/5 group-hover:border-primary/20 transition-all group-hover:shadow-premium-lg group-hover:-translate-y-1">
+					<div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white shadow-premium border border-border/5 group-hover:border-primary/20 transition-all group-hover:shadow-premium-lg group-hover:-translate-y-1">
  <div className="w-6 h-6 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center shadow-sm">
  <FileText className="w-3.5 h-3.5 text-white" />
  </div>
- <span className="text-sm font-black text-foreground tracking-tighter">SanjeevForms</span>
+						<span className="text-sm font-black text-foreground tracking-tighter">sanjeevatri</span>
  </div>
  </Link>
- <p className="mt-6 text-[10px] text-muted-foreground/50 font-bold uppercase tracking-[0.2em]">Secure • Anonymous • Powered by SanjeevForms</p>
+				<p className="mt-6 text-[10px] text-muted-foreground/50 font-bold uppercase tracking-[0.2em]">Secure • Anonymous • Powered by sanjeevatri</p>
  </div>
  </div>
  </div>
