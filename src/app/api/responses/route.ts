@@ -5,216 +5,216 @@ export const dynamic = 'force-dynamic'
 
 // GET /api/responses - Get responses for a form (with ownership check)
 export async function GET(request: NextRequest) {
-    try {
-        const { prisma } = await import('@/lib/db')
-        const { searchParams } = new URL(request.url)
-        const formId = searchParams.get('formId')
-        const cookieStore = await cookies()
-        const userId = cookieStore.get('user-id')?.value
-        const workspaceId = cookieStore.get('workspace-id')?.value
+ try {
+ const { prisma } = await import('@/lib/db')
+ const { searchParams } = new URL(request.url)
+ const formId = searchParams.get('formId')
+ const cookieStore = await cookies()
+ const userId = cookieStore.get('user-id')?.value
+ const workspaceId = cookieStore.get('workspace-id')?.value
 
-        if (!userId || !workspaceId) {
-            return NextResponse.json({
-                success: false,
-                error: "Unauthorized",
-            }, { status: 401 })
-        }
+ if (!userId || !workspaceId) {
+ return NextResponse.json({
+ success: false,
+ error: "Unauthorized",
+ }, { status: 401 })
+ }
 
-        if (!formId) {
-            return NextResponse.json({
-                success: false,
-                error: "formId is required",
-            }, { status: 400 })
-        }
+ if (!formId) {
+ return NextResponse.json({
+ success: false,
+ error: "formId is required",
+ }, { status: 400 })
+ }
 
-        // Verify the form belongs to user's workspace
-        const form = await prisma.form.findUnique({
-            where: { id: formId },
-            select: { workspaceId: true }
-        })
+ // Verify the form belongs to user's workspace
+ const form = await prisma.form.findUnique({
+ where: { id: formId },
+ select: { workspaceId: true }
+ })
 
-        if (!form) {
-            return NextResponse.json({
-                success: false,
-                error: "Form not found",
-            }, { status: 404 })
-        }
+ if (!form) {
+ return NextResponse.json({
+ success: false,
+ error: "Form not found",
+ }, { status: 404 })
+ }
 
-        if (form.workspaceId !== workspaceId) {
-            return NextResponse.json({
-                success: false,
-                error: "Access denied",
-            }, { status: 403 })
-        }
+ if (form.workspaceId !== workspaceId) {
+ return NextResponse.json({
+ success: false,
+ error: "Access denied",
+ }, { status: 403 })
+ }
 
-        // Get responses for this form
-        const responses = await prisma.response.findMany({
-            where: { formId },
-            orderBy: { createdAt: 'desc' }
-        })
+ // Get responses for this form
+ const responses = await prisma.response.findMany({
+ where: { formId },
+ orderBy: { createdAt: 'desc' }
+ })
 
-        return NextResponse.json({
-            success: true,
-            data: responses,
-            count: responses.length,
-        })
-    } catch (error) {
-        console.error("Failed to fetch responses:", error)
-        return NextResponse.json({
-            success: false,
-            error: "Failed to fetch responses"
-        }, { status: 500 })
-    }
+ return NextResponse.json({
+ success: true,
+ data: responses,
+ count: responses.length,
+ })
+ } catch (error) {
+ console.error("Failed to fetch responses:", error)
+ return NextResponse.json({
+ success: false,
+ error: "Failed to fetch responses"
+ }, { status: 500 })
+ }
 }
 
 // POST /api/responses - Submit a new response (public - no auth needed)
 export async function POST(request: NextRequest) {
-    try {
-        const { prisma } = await import('@/lib/db')
-        const body = await request.json()
-        const { formId, data, metadata } = body
+ try {
+ const { prisma } = await import('@/lib/db')
+ const body = await request.json()
+ const { formId, data, metadata } = body
 
-        if (!formId) {
-            return NextResponse.json({
-                success: false,
-                error: "formId is required",
-            }, { status: 400 })
-        }
+ if (!formId) {
+ return NextResponse.json({
+ success: false,
+ error: "formId is required",
+ }, { status: 400 })
+ }
 
-        // Check if form exists and is published
-        const form = await prisma.form.findUnique({
-            where: { id: formId },
-            select: { status: true }
-        })
+ // Check if form exists and is published
+ const form = await prisma.form.findUnique({
+ where: { id: formId },
+ select: { status: true }
+ })
 
-        if (!form) {
-            return NextResponse.json({
-                success: false,
-                error: "Form not found",
-            }, { status: 404 })
-        }
+ if (!form) {
+ return NextResponse.json({
+ success: false,
+ error: "Form not found",
+ }, { status: 404 })
+ }
 
-        if (form.status !== 'PUBLISHED') {
-            return NextResponse.json({
-                success: false,
-                error: "This form is not accepting responses",
-            }, { status: 403 })
-        }
+ if (form.status !== 'PUBLISHED') {
+ return NextResponse.json({
+ success: false,
+ error: "This form is not accepting responses",
+ }, { status: 403 })
+ }
 
-        const newResponse = await prisma.response.create({
-            data: {
-                formId,
-                data: data || {},
-                metadata: metadata || {},
-                isComplete: true,
-            }
-        })
+ const newResponse = await prisma.response.create({
+ data: {
+ formId,
+ data: data || {},
+ metadata: metadata || {},
+ isComplete: true,
+ }
+ })
 
-        return NextResponse.json({
-            success: true,
-            data: newResponse,
-        }, { status: 201 })
-    } catch (error) {
-        console.error("Failed to submit response:", error)
-        return NextResponse.json({
-            success: false,
-            error: "Failed to submit response",
-        }, { status: 500 })
-    }
+ return NextResponse.json({
+ success: true,
+ data: newResponse,
+ }, { status: 201 })
+ } catch (error) {
+ console.error("Failed to submit response:", error)
+ return NextResponse.json({
+ success: false,
+ error: "Failed to submit response",
+ }, { status: 500 })
+ }
 }
 
 // DELETE /api/responses - Delete all responses for a form
 export async function DELETE(request: NextRequest) {
-    try {
-        const { prisma } = await import('@/lib/db')
-        const { searchParams } = new URL(request.url)
-        const formId = searchParams.get('formId')
-        const cookieStore = await cookies()
-        const userId = cookieStore.get('user-id')?.value
-        const workspaceId = cookieStore.get('workspace-id')?.value
+ try {
+ const { prisma } = await import('@/lib/db')
+ const { searchParams } = new URL(request.url)
+ const formId = searchParams.get('formId')
+ const cookieStore = await cookies()
+ const userId = cookieStore.get('user-id')?.value
+ const workspaceId = cookieStore.get('workspace-id')?.value
 
-        if (!userId || !workspaceId) {
-            return NextResponse.json({
-                success: false,
-                error: "Unauthorized",
-            }, { status: 401 })
-        }
+ if (!userId || !workspaceId) {
+ return NextResponse.json({
+ success: false,
+ error: "Unauthorized",
+ }, { status: 401 })
+ }
 
-        if (!formId) {
-            return NextResponse.json({
-                success: false,
-                error: "formId is required",
-            }, { status: 400 })
-        }
+ if (!formId) {
+ return NextResponse.json({
+ success: false,
+ error: "formId is required",
+ }, { status: 400 })
+ }
 
-        // Verify the form belongs to user's workspace
-        const form = await prisma.form.findUnique({
-            where: { id: formId },
-            select: { workspaceId: true }
-        })
+ // Verify the form belongs to user's workspace
+ const form = await prisma.form.findUnique({
+ where: { id: formId },
+ select: { workspaceId: true }
+ })
 
-        if (!form) {
-            return NextResponse.json({
-                success: false,
-                error: "Form not found",
-            }, { status: 404 })
-        }
+ if (!form) {
+ return NextResponse.json({
+ success: false,
+ error: "Form not found",
+ }, { status: 404 })
+ }
 
-        if (form.workspaceId !== workspaceId) {
-            return NextResponse.json({
-                success: false,
-                error: "Access denied",
-            }, { status: 403 })
-        }
+ if (form.workspaceId !== workspaceId) {
+ return NextResponse.json({
+ success: false,
+ error: "Access denied",
+ }, { status: 403 })
+ }
 
-        // Get responses to find any file URLs for blob cleanup
-        const responses = await prisma.response.findMany({
-            where: { formId },
-            select: { data: true }
-        })
+ // Get responses to find any file URLs for blob cleanup
+ const responses = await prisma.response.findMany({
+ where: { formId },
+ select: { data: true }
+ })
 
-        // Extract file URLs from response data for blob cleanup
-        const fileUrls: string[] = []
-        for (const response of responses) {
-            const data = response.data as Record<string, unknown>
-            for (const value of Object.values(data)) {
-                // Check if value is a file object with url
-                if (value && typeof value === 'object' && 'url' in value) {
-                    const fileValue = value as { url?: string }
-                    if (fileValue.url && fileValue.url.includes('blob.vercel-storage.com')) {
-                        fileUrls.push(fileValue.url)
-                    }
-                }
-            }
-        }
+ // Extract file URLs from response data for blob cleanup
+ const fileUrls: string[] = []
+ for (const response of responses) {
+ const data = response.data as Record<string, unknown>
+ for (const value of Object.values(data)) {
+ // Check if value is a file object with url
+ if (value && typeof value === 'object' && 'url' in value) {
+ const fileValue = value as { url?: string }
+ if (fileValue.url && fileValue.url.includes('blob.vercel-storage.com')) {
+ fileUrls.push(fileValue.url)
+ }
+ }
+ }
+ }
 
-        // Delete files from blob storage
-        if (fileUrls.length > 0) {
-            try {
-                const { del } = await import('@vercel/blob')
-                await del(fileUrls)
-            } catch (blobError) {
-                console.error('Failed to delete some blob files:', blobError)
-                // Continue with response deletion even if blob cleanup fails
-            }
-        }
+ // Delete files from blob storage
+ if (fileUrls.length > 0) {
+ try {
+ const { del } = await import('@vercel/blob')
+ await del(fileUrls)
+ } catch (blobError) {
+ console.error('Failed to delete some blob files:', blobError)
+ // Continue with response deletion even if blob cleanup fails
+ }
+ }
 
-        // Delete all responses for this form
-        const result = await prisma.response.deleteMany({
-            where: { formId }
-        })
+ // Delete all responses for this form
+ const result = await prisma.response.deleteMany({
+ where: { formId }
+ })
 
-        return NextResponse.json({
-            success: true,
-            message: `Deleted ${result.count} responses and ${fileUrls.length} files`,
-            count: result.count,
-            filesDeleted: fileUrls.length,
-        })
-    } catch (error) {
-        console.error("Failed to delete responses:", error)
-        return NextResponse.json({
-            success: false,
-            error: "Failed to delete responses"
-        }, { status: 500 })
-    }
+ return NextResponse.json({
+ success: true,
+ message: `Deleted ${result.count} responses and ${fileUrls.length} files`,
+ count: result.count,
+ filesDeleted: fileUrls.length,
+ })
+ } catch (error) {
+ console.error("Failed to delete responses:", error)
+ return NextResponse.json({
+ success: false,
+ error: "Failed to delete responses"
+ }, { status: 500 })
+ }
 }
