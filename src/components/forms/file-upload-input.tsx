@@ -59,35 +59,89 @@ async function shrinkImage(file: File): Promise<File> {
  }
 }
 
-function send(
+// One request with upload progress (fetch can't report upload progress)
+function xhr(
+ method: string,
+ url: string,
+ body: XMLHttpRequestBodyInit,
+ headers: Record<string, string>,
+ onProgress: (loaded: number) => void
+): Promise<{ status: number; text: string }> {
+ return new Promise((resolve, reject) => {
+ const req = new XMLHttpRequest()
+ req.open(method, url)
+ for (const [k, v] of Object.entries(headers)) req.setRequestHeader(k, v)
+ req.upload.onprogress = (e) => onProgress(e.loaded)
+ req.onload = () => resolve({ status: req.status, text: req.responseText })
+ req.onerror = () => reject(new Error("Upload failed. Check your connection and try again"))
+ req.send(body)
+ })
+}
+
+function errorFrom(text: string, fallback: string) {
+ try {
+ return (JSON.parse(text) as { error?: string }).error || fallback
+ } catch {
+ return fallback
+ }
+}
+
+async function postJson<T>(url: string, body?: unknown): Promise<T> {
+ const res = await fetch(url, {
+ method: "POST",
+ headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+ body: body === undefined ? undefined : JSON.stringify(body),
+ })
+ const json = await res.json().catch(() => null)
+ if (!res.ok || !json?.success) throw new Error(json?.error || "Upload failed. Please try again")
+ return json.data as T
+}
+
+/**
+ * Vercel refuses requests over 4.5 MB, so the file goes up in pieces:
+ * start (checks + upload id), one PUT per 3 MB piece, then finish.
+ */
+async function send(
  file: File,
  formId: string,
  questionId: string,
  onProgress: (fraction: number) => void
 ): Promise<StoredFile> {
- return new Promise((resolve, reject) => {
- const xhr = new XMLHttpRequest()
- xhr.open("POST", "/api/upload")
- xhr.upload.onprogress = (e) => {
- if (e.lengthComputable) onProgress(e.loaded / e.total)
- }
- xhr.onload = () => {
- let body: { success?: boolean; data?: StoredFile; error?: string } | null = null
+ const { id, chunkSize, chunks } = await postJson<{ id: string; chunkSize: number; chunks: number }>(
+ "/api/upload",
+ { formId, questionId, name: file.name, type: file.type || "application/octet-stream", size: file.size }
+ )
+
+ for (let index = 0; index < chunks; index++) {
+ const piece = file.slice(index * chunkSize, Math.min(file.size, (index + 1) * chunkSize))
+ const done = index * chunkSize
+ // Network errors and server hiccups are retried; a refused piece is not
+ let failure: Error | null = null
+ for (let attempt = 1; attempt <= 3; attempt++) {
+ let res: { status: number; text: string }
  try {
- body = JSON.parse(xhr.responseText)
- } catch {
- // Vercel answers an oversized body with a non-JSON 413
+ res = await xhr(
+ "PUT",
+ `/api/upload/${id}?index=${index}`,
+ piece,
+ { "Content-Type": "application/octet-stream" },
+ (loaded) => onProgress(Math.min(1, (done + loaded) / file.size))
+ )
+ } catch (err) {
+ failure = err instanceof Error ? err : new Error("Upload failed")
+ continue
  }
- if (xhr.status < 300 && body?.success && body.data) resolve(body.data)
- else reject(new Error(body?.error || (xhr.status === 413 ? "That file is too big" : "Upload failed. Please try again")))
+ if (res.status < 300) {
+ failure = null
+ break
  }
- xhr.onerror = () => reject(new Error("Upload failed. Check your connection and try again"))
- const data = new FormData()
- data.append("formId", formId)
- data.append("questionId", questionId)
- data.append("file", file)
- xhr.send(data)
- })
+ failure = new Error(errorFrom(res.text, "Upload failed. Please try again"))
+ if (res.status < 500) break
+ }
+ if (failure) throw failure
+ }
+
+ return postJson<StoredFile>(`/api/upload/${id}`)
 }
 
 function describeAccept(accept: string) {

@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
  }
  const allIds = [...wanted.values()].flat()
  const found = allIds.length === 0 ? [] : await prisma.attachment.findMany({
- where: { id: { in: allIds }, formId, responseId: null },
+ where: { id: { in: allIds }, formId, responseId: null, ready: true },
  select: { id: true, questionId: true, name: true, size: true, type: true },
  })
  const byId = new Map(found.map((f) => [f.id, f]))

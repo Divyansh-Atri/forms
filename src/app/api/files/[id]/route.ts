@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { isImageType } from '@/lib/attachments'
+import { chunkCount, isImageType } from '@/lib/attachments'
 
 export const dynamic = 'force-dynamic'
 
 // GET /api/files/[id] - the form owner opens or downloads an attached file.
 // Only the workspace that owns the form can read it. ?download=1 forces a
-// download instead of showing images and PDFs in the browser.
+// download instead of showing images and PDFs in the browser. The file is
+// streamed piece by piece: Vercel caps non-streamed responses at 4.5 MB.
 export async function GET(
  request: NextRequest,
  { params }: { params: Promise<{ id: string }> }
@@ -22,10 +23,10 @@ export async function GET(
 
  const file = await prisma.attachment.findUnique({
  where: { id },
- select: { name: true, type: true, size: true, data: true, form: { select: { workspaceId: true } } },
+ select: { name: true, type: true, size: true, ready: true, form: { select: { workspaceId: true } } },
  })
  // Same answer for "missing" and "not yours", so ids can't be probed
- if (!file || file.form.workspaceId !== workspaceId) {
+ if (!file || !file.ready || file.form.workspaceId !== workspaceId) {
  return NextResponse.json({ success: false, error: 'File not found' }, { status: 404 })
  }
 
@@ -44,7 +45,29 @@ export async function GET(
  'Cache-Control': 'private, max-age=3600',
  }
 
- return new NextResponse(Buffer.from(file.data), { headers })
+ // One piece is read from the database each time the browser wants more
+ const pieces = chunkCount(file.size)
+ let next = 0
+ const body = new ReadableStream<Uint8Array>({
+ async pull(controller) {
+ if (next >= pieces) {
+ controller.close()
+ return
+ }
+ const chunk = await prisma.attachmentChunk.findUnique({
+ where: { attachmentId_index: { attachmentId: id, index: next } },
+ select: { data: true },
+ })
+ if (!chunk) {
+ controller.error(new Error(`Missing piece ${next} of ${id}`))
+ return
+ }
+ next++
+ controller.enqueue(new Uint8Array(chunk.data))
+ },
+ })
+
+ return new NextResponse(body, { headers })
  } catch (error) {
  console.error('File download error:', error)
  return NextResponse.json({ success: false, error: 'Failed to load file' }, { status: 500 })

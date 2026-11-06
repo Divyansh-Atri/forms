@@ -1,12 +1,25 @@
 // Rules for "File upload" questions, shared by the browser and the server.
 //
-// Files are stored in Postgres (Neon), so the limits here protect the
-// database: Vercel rejects request bodies over ~4.5 MB, and the free Neon
-// plan has 1 GB in total.
+// Files are stored in Postgres (Neon). Vercel rejects any request over
+// ~4.5 MB, so files travel in CHUNK_BYTES pieces; the free Neon plan has
+// 1 GB in total, so uploads also have an overall budget (see /api/upload).
 
 /** Hard cap per file. Builders can set a lower limit, never a higher one. */
-export const MAX_FILE_MB = 4
+export const MAX_FILE_MB = 20
 export const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024
+
+/** Size of each upload piece: comfortably under Vercel's 4.5 MB request limit. */
+export const CHUNK_BYTES = 3 * 1024 * 1024
+
+export function chunkCount(size: number) {
+ return Math.max(1, Math.ceil(size / CHUNK_BYTES))
+}
+
+/** Exact byte length piece `index` of a file of `size` bytes must have. */
+export function chunkLength(size: number, index: number) {
+ const last = chunkCount(size) - 1
+ return index < last ? CHUNK_BYTES : size - CHUNK_BYTES * last
+}
 
 /** Most files one question can take. */
 export const MAX_FILES_PER_QUESTION = 10

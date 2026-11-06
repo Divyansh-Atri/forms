@@ -291,6 +291,8 @@ model FileUpload {
 }
 
 // Files respondents attach to a "File upload" question, stored in Postgres.
+// Vercel caps each request at 4.5 MB, so the browser uploads a file in 3 MB
+// pieces (AttachmentChunk) and downloads are streamed back piece by piece.
 // A file is uploaded as soon as it is picked (responseId still null) and is
 // linked to the response when the form is submitted. Unlinked files older
 // than a day are deleted by the upload route.
@@ -305,7 +307,9 @@ model Attachment {
   name        String
   type        String
   size        Int
-  data        Bytes
+  // false until every piece has arrived
+  ready       Boolean   @default(false)
+  chunks      AttachmentChunk[]
 
   // sha256 of the uploader's IP, only for rate limiting
   ipHash      String?
@@ -316,6 +320,16 @@ model Attachment {
   @@index([responseId])
   @@index([responseId, createdAt])
   @@index([ipHash, createdAt])
+}
+
+// One piece (up to 3 MB) of an attachment's bytes, in order of `index`
+model AttachmentChunk {
+  attachment   Attachment @relation(fields: [attachmentId], references: [id], onDelete: Cascade)
+  attachmentId String
+  index        Int
+  data         Bytes
+
+  @@id([attachmentId, index])
 }
 
 // ================== INTEGRATIONS ==================
