@@ -161,8 +161,9 @@ export interface SectionQuestion {
  allowedTypes?: unknown
 }
 
+// Keys are lowercased types: imported forms use SHORT_TEXT, the editor saves shortText
 const SECTION_INPUT_TYPES: Record<string, string> = {
- short_text: "text", text: "text", email: "email", phone: "tel", tel: "tel",
+ short_text: "text", shorttext: "text", text: "text", email: "email", phone: "tel", tel: "tel",
  url: "url", number: "number", date: "date",
 }
 
@@ -195,7 +196,7 @@ export function SectionField({
  )
  const placeholder = question.placeholder || (compact ? "" : question.description) || "Type your answer…"
 
- if (type === "long_text" || type === "textarea") {
+ if (type === "long_text" || type === "longtext" || type === "textarea") {
  return (
  <textarea
  id={question.id}

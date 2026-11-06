@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import type { Prisma } from '@prisma/client'
 
 // GET /api/forms/[id] - Get a single form
 export async function GET(
@@ -102,8 +103,26 @@ export async function PUT(
  }, { status: 403 })
  }
 
- // Update form
- const updatedForm = await prisma.form.update({
+ // Sectioned (imported) forms send { sections: [{ id, questions }] }:
+ // write each section's questions back, but only for this form's sections
+ const sectionUpdates: Array<{ id: string; questions: Prisma.InputJsonValue }> = []
+ if (Array.isArray(body.sections)) {
+ const own = await prisma.section.findMany({ where: { formId: id }, select: { id: true } })
+ const ownIds = new Set(own.map((s) => s.id))
+ for (const section of body.sections) {
+ if (!section || typeof section.id !== 'string' || !Array.isArray(section.questions)) {
+ return NextResponse.json({ success: false, error: "Invalid sections" }, { status: 400 })
+ }
+ if (!ownIds.has(section.id)) {
+ return NextResponse.json({ success: false, error: "Section not found" }, { status: 400 })
+ }
+ sectionUpdates.push({ id: section.id, questions: section.questions })
+ }
+ }
+
+ // Update form (and its sections) together
+ const [updatedForm] = await prisma.$transaction([
+ prisma.form.update({
  where: { id },
  data: {
  title: body.title,
@@ -116,7 +135,11 @@ export async function PUT(
  welcomeScreen: body.welcomeScreen,
  thankYouScreen: body.thankYouScreen,
  }
- })
+ }),
+ ...sectionUpdates.map((s) =>
+ prisma.section.update({ where: { id: s.id }, data: { questions: s.questions } })
+ ),
+ ])
 
  return NextResponse.json({
  success: true,

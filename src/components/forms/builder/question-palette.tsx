@@ -1,11 +1,10 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
 import { QuestionType } from "@/types"
+import { cn } from "@/lib/utils"
 import {
  Type,
  AlignLeft,
- List,
  CheckSquare,
  ChevronDown,
  Star,
@@ -15,7 +14,7 @@ import {
  ArrowUpDown,
  Calendar,
  Clock,
- Upload,
+ Camera,
  PenTool,
  MapPin,
  MessageSquare,
@@ -28,6 +27,8 @@ import {
 
 interface QuestionPaletteProps {
  onAddQuestion: (type: QuestionType) => void
+ /** Only offer these types (imported section forms support a subset) */
+ allowedTypes?: QuestionType[]
 }
 
 const questionCategories = [
@@ -40,6 +41,12 @@ const questionCategories = [
  { type: QuestionType.URL, label: "URL", icon: Link },
  { type: QuestionType.PHONE, label: "Phone", icon: Phone },
  { type: QuestionType.NUMBER, label: "Number", icon: Hash },
+ ],
+ },
+ {
+ name: "Files & Photos",
+ questions: [
+ { type: QuestionType.FILE_UPLOAD, label: "File / Photo Upload", icon: Camera, highlight: true },
  ],
  },
  {
@@ -79,7 +86,6 @@ const questionCategories = [
  {
  name: "Special",
  questions: [
- { type: QuestionType.FILE_UPLOAD, label: "File / Photo Upload", icon: Upload },
  { type: QuestionType.SIGNATURE, label: "Signature", icon: PenTool },
  { type: QuestionType.ADDRESS, label: "Address", icon: MapPin },
  { type: QuestionType.CONSENT, label: "Consent", icon: MessageSquare },
@@ -87,36 +93,58 @@ const questionCategories = [
  },
 ]
 
-export function QuestionPalette({ onAddQuestion }: QuestionPaletteProps) {
- return (
- <div className="hidden md:block w-64 bg-white border-r border-slate-200 overflow-y-auto p-4 shrink-0">
- <h3 className="font-semibold text-sm text-slate-500 uppercase tracking-wider mb-4">
- Question Types
- </h3>
+/** The grouped list of question types, used by the side panel and the phone sheet. */
+export function QuestionTypeList({ onAddQuestion, allowedTypes }: QuestionPaletteProps) {
+ const categories = questionCategories
+ .map((c) => ({ ...c, questions: c.questions.filter((q) => !allowedTypes || allowedTypes.includes(q.type)) }))
+ .filter((c) => c.questions.length > 0)
 
+ return (
  <div className="space-y-6">
- {questionCategories.map((category) => (
+ {categories.map((category) => (
  <div key={category.name}>
- <h4 className="text-xs font-medium text-slate-400 mb-2">
- {category.name}
- </h4>
+ <h4 className="text-xs font-medium text-slate-400 mb-2">{category.name}</h4>
  <div className="space-y-1">
- {category.questions.map((question) => (
+ {category.questions.map((question) => {
+ const highlight = "highlight" in question && question.highlight
+ return (
  <button
  key={question.type}
  onClick={() => onAddQuestion(question.type)}
- className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-blue-50 transition-colors text-left text-slate-700 "
+ className={cn(
+ "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left text-slate-700",
+ highlight ? "bg-violet/[0.06] ring-1 ring-violet/20 hover:bg-violet/10" : "hover:bg-blue-50"
+ )}
  >
- <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
- <question.icon className="w-4 h-4 text-blue-600 "/>
+ <div className={cn(
+ "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+ highlight ? "bg-brand" : "bg-blue-100"
+ )}>
+ <question.icon className={cn("w-4 h-4", highlight ? "text-white" : "text-blue-600")} />
  </div>
  <span className="font-medium">{question.label}</span>
  </button>
- ))}
+ )
+ })}
  </div>
  </div>
  ))}
+ {allowedTypes && (
+ <p className="text-xs text-slate-400 leading-relaxed">
+ This form was imported with sections, so it supports the types above.
+ </p>
+ )}
  </div>
+ )
+}
+
+export function QuestionPalette(props: QuestionPaletteProps) {
+ return (
+ <div className="hidden md:block w-64 h-full bg-white border-r border-slate-200 overflow-y-auto p-4 shrink-0">
+ <h3 className="font-semibold text-sm text-slate-500 uppercase tracking-wider mb-4">
+ Question Types
+ </h3>
+ <QuestionTypeList {...props} />
  </div>
  )
 }

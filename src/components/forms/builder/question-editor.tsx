@@ -19,7 +19,7 @@ interface QuestionEditorProps {
 
 export function QuestionEditor({ question, onUpdate, onClose }: QuestionEditorProps) {
  return (
- <div className="w-80 bg-white border-l overflow-y-auto shrink-0">
+ <div className="fixed inset-0 z-50 w-full md:static md:inset-auto md:z-auto md:w-80 bg-white border-l overflow-y-auto shrink-0">
  <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between z-10">
  <h3 className="font-semibold">Question Settings</h3>
  <button

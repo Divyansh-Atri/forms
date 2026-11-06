@@ -168,7 +168,12 @@ export default function ResponsesPage() {
  const formResult = await formResponse.json()
 
  if (formResult.success && isMounted) {
- setForm(formResult.data)
+ // Imported forms keep their questions in sections
+ const data = formResult.data
+ const sectionQuestions = (data.formSections || []).flatMap(
+ (section: { questions?: Question[] }) => (Array.isArray(section.questions) ? section.questions : [])
+ )
+ setForm(sectionQuestions.length > 0 ? { ...data, questions: sectionQuestions } : data)
  }
 
  // Fetch responses

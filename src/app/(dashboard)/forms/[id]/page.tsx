@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect, use } from "react"
+import { AnimatePresence, motion } from "framer-motion"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -29,10 +30,11 @@ import {
     Share2,
     Plus,
     Trash2,
+    X,
 } from "lucide-react"
 import { QuestionType, Question } from "@/types"
 import { QuestionCard } from "@/components/forms/builder/question-card"
-import { QuestionPalette } from "@/components/forms/builder/question-palette"
+import { QuestionPalette, QuestionTypeList } from "@/components/forms/builder/question-palette"
 import { QuestionEditor } from "@/components/forms/builder/question-editor"
 import { FormPreview } from "@/components/forms/builder/form-preview"
 import { ShareModal } from "@/components/forms/share-modal"
@@ -73,6 +75,28 @@ function SettingsToggle({
 }
 
 // Initial mock form data
+// Imported (sectioned) forms store types like SHORT_TEXT; the builder uses shortText
+const normalizeType = (type: unknown) =>
+    typeof type === "string" && /^[A-Z_]+$/.test(type)
+        ? type.toLowerCase().replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())
+        : type
+
+// Types that sectioned/table forms can show (see SectionField)
+const SECTION_TYPES = [
+    QuestionType.SHORT_TEXT,
+    QuestionType.LONG_TEXT,
+    QuestionType.EMAIL,
+    QuestionType.URL,
+    QuestionType.PHONE,
+    QuestionType.NUMBER,
+    QuestionType.DATE,
+    QuestionType.FILE_UPLOAD,
+]
+
+type SectionInfo = { id: string; title: string }
+type InSection = { sectionId?: string; sectionTitle?: string }
+const sectionOf = (q: Question | undefined) => (q as (Question & InSection) | undefined)?.sectionId
+
 const initialForm = {
     id: "1",
     title: "Untitled Form",
@@ -92,6 +116,9 @@ export default function FormEditorPage() {
     const [showShareModal, setShowShareModal] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
+    // Forms imported from JSON keep their questions in sections
+    const [sections, setSections] = useState<SectionInfo[]>([])
+    const [showTypeSheet, setShowTypeSheet] = useState(false)
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -118,13 +145,15 @@ export default function FormEditorPage() {
                                 section.questions.forEach((q: any) => {
                                     allQuestions.push({
                                         ...q,
+                                        type: normalizeType(q.type),
                                         sectionId: section.id,
                                         sectionTitle: section.title
                                     })
                                 })
                             }
                         })
-                        formData.questions = allQuestions.length > 0 ? allQuestions : formData.questions
+                        formData.questions = allQuestions
+                        setSections(formData.formSections.map((s: SectionInfo) => ({ id: s.id, title: s.title })))
                     }
 
                     setForm(formData)
@@ -154,7 +183,23 @@ export default function FormEditorPage() {
                     description: form.description,
                     slug: form.slug,
                     status: form.status,
-                    questions: form.questions,
+                    // Sectioned forms are shown from their sections, so save
+                    // the questions back into them rather than the flat list
+                    ...(sections.length > 0
+                        ? {
+                            sections: sections.map((section) => ({
+                                id: section.id,
+                                questions: form.questions
+                                    .filter((q) => {
+                                        const sid = sectionOf(q)
+                                        const known = sections.some((s) => s.id === sid)
+                                        return known ? sid === section.id : section.id === sections[sections.length - 1].id
+                                    })
+                                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                                    .map(({ sectionTitle, ...q }: Question & InSection) => q),
+                            })),
+                        }
+                        : { questions: form.questions }),
                 }),
             })
 
@@ -184,11 +229,15 @@ export default function FormEditorPage() {
             setForm((prev) => {
                 const oldIndex = prev.questions.findIndex((q) => q.id === active.id)
                 const newIndex = prev.questions.findIndex((q) => q.id === over.id)
+                const moved = arrayMove(prev.questions, oldIndex, newIndex)
 
-                return {
-                    ...prev,
-                    questions: arrayMove(prev.questions, oldIndex, newIndex),
+                // Dropping onto a question in another section moves it into that section
+                const target = prev.questions[newIndex] as Question & InSection
+                if (target?.sectionId) {
+                    moved[newIndex] = Object.assign({}, moved[newIndex], { sectionId: target.sectionId, sectionTitle: target.sectionTitle })
                 }
+
+                return { ...prev, questions: moved }
             })
         }
     }
@@ -218,12 +267,23 @@ export default function FormEditorPage() {
             (newQuestion as any).max = 10;
         }
 
-        setForm((prev) => ({
-            ...prev,
-            questions: [...prev.questions, newQuestion],
-        }))
+        // Insert after the selected question (in its section), else at the end
+        setForm((prev) => {
+            const at = prev.questions.findIndex((q) => q.id === selectedQuestion)
+            const anchor = (at >= 0 ? prev.questions[at] : prev.questions[prev.questions.length - 1]) as (Question & InSection) | undefined
+            const placed = anchor?.sectionId
+                ? Object.assign({}, newQuestion, { sectionId: anchor.sectionId, sectionTitle: anchor.sectionTitle })
+                : newQuestion
+            const questions = [...prev.questions]
+            questions.splice(at >= 0 ? at + 1 : questions.length, 0, placed)
+            return { ...prev, questions }
+        })
         setSelectedQuestion(newQuestion.id)
-    }, [])
+        setShowTypeSheet(false)
+        requestAnimationFrame(() =>
+            document.getElementById(`q-${newQuestion.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })
+        )
+    }, [selectedQuestion])
 
     const updateQuestion = useCallback((id: string, updates: Partial<Question>) => {
         setForm((prev) => ({
@@ -277,7 +337,7 @@ export default function FormEditorPage() {
     }
 
     return (
-        <div className="h-screen flex flex-col bg-slate-50 -m-4 lg:-m-8">
+        <div className="h-[calc(100dvh-4rem)] flex flex-col bg-slate-50 -m-4 sm:-m-6 lg:-m-10">
             {/* Top Bar */}
             <header className="h-16 bg-white/80 backdrop-blur-md border-b border-gray-200/50 flex items-center justify-between px-6 shrink-0 z-10">
                 <div className="flex items-center gap-4">
@@ -368,8 +428,11 @@ export default function FormEditorPage() {
                 {activeTab === "build" && (
                     <>
                         {/* Question Palette */}
-                        <div className="border-r border-gray-200 bg-white">
-                            <QuestionPalette onAddQuestion={addQuestion} />
+                        <div className="hidden md:block border-r border-gray-200 bg-white">
+                            <QuestionPalette
+                                onAddQuestion={addQuestion}
+                                allowedTypes={sections.length > 0 ? SECTION_TYPES : undefined}
+                            />
                         </div>
 
                         {/* Form Canvas */}
@@ -408,18 +471,32 @@ export default function FormEditorPage() {
                                         strategy={verticalListSortingStrategy}
                                     >
                                         <div className="space-y-4">
-                                            {form.questions.map((question, index) => (
-                                                <QuestionCard
-                                                    key={question.id}
-                                                    question={question}
-                                                    index={index}
-                                                    isSelected={selectedQuestion === question.id}
-                                                    onSelect={() => setSelectedQuestion(question.id)}
-                                                    onDelete={() => deleteQuestion(question.id)}
-                                                    onDuplicate={() => duplicateQuestion(question.id)}
-                                                    onUpdate={(updates) => updateQuestion(question.id, updates)}
-                                                />
-                                            ))}
+                                            {form.questions.map((question, index) => {
+                                                const sid = sectionOf(question)
+                                                const newSection = sections.length > 0 && (index === 0 || sectionOf(form.questions[index - 1]) !== sid)
+                                                return (
+                                                    <div key={question.id} id={`q-${question.id}`} className="space-y-3 scroll-mt-24">
+                                                        {newSection && (
+                                                            <div className="flex items-center gap-2 pt-2">
+                                                                <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-violet">Section</span>
+                                                                <span className="text-sm font-semibold text-slate-800">
+                                                                    {(question as Question & InSection).sectionTitle || sections.find((s) => s.id === sid)?.title}
+                                                                </span>
+                                                                <span className="h-px flex-1 bg-slate-200" />
+                                                            </div>
+                                                        )}
+                                                        <QuestionCard
+                                                            question={question}
+                                                            index={index}
+                                                            isSelected={selectedQuestion === question.id}
+                                                            onSelect={() => setSelectedQuestion(question.id)}
+                                                            onDelete={() => deleteQuestion(question.id)}
+                                                            onDuplicate={() => duplicateQuestion(question.id)}
+                                                            onUpdate={(updates) => updateQuestion(question.id, updates)}
+                                                        />
+                                                    </div>
+                                                )
+                                            })}
                                         </div>
                                     </SortableContext>
                                 </DndContext>
@@ -446,6 +523,49 @@ export default function FormEditorPage() {
                                 )}
                             </div>
                         </div>
+
+                        {/* Phones have no side panel: a button opens the question types */}
+                        <button
+                            onClick={() => setShowTypeSheet(true)}
+                            className="md:hidden fixed bottom-5 right-5 z-40 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-white shadow-[0_16px_34px_-12px_rgba(124,58,237,0.7)] active:scale-95 transition-transform"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Add question
+                        </button>
+                        <AnimatePresence>
+                            {showTypeSheet && (
+                                <motion.div
+                                    className="md:hidden fixed inset-0 z-50 flex items-end"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                >
+                                    <div className="absolute inset-0 bg-black/30" onClick={() => setShowTypeSheet(false)} aria-hidden="true" />
+                                    <motion.div
+                                        role="dialog"
+                                        aria-modal="true"
+                                        aria-label="Add a question"
+                                        initial={{ y: "100%" }}
+                                        animate={{ y: 0 }}
+                                        exit={{ y: "100%" }}
+                                        transition={{ type: "spring", stiffness: 380, damping: 36 }}
+                                        className="relative w-full max-h-[80vh] overflow-y-auto rounded-t-3xl bg-white p-5 pb-8 shadow-2xl"
+                                    >
+                                        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200" />
+                                        <div className="mb-4 flex items-center justify-between">
+                                            <h3 className="text-lg font-semibold text-slate-900">Add a question</h3>
+                                            <button onClick={() => setShowTypeSheet(false)} aria-label="Close" className="rounded-full p-2 hover:bg-slate-100">
+                                                <X className="h-5 w-5 text-slate-500" />
+                                            </button>
+                                        </div>
+                                        <QuestionTypeList
+                                            onAddQuestion={addQuestion}
+                                            allowedTypes={sections.length > 0 ? SECTION_TYPES : undefined}
+                                        />
+                                    </motion.div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         {/* Question Settings Panel */}
                         {selectedQuestionData && (
