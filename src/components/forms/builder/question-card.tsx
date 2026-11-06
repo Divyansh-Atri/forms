@@ -83,7 +83,7 @@ const questionTypeLabels: Record<string, string> = {
  [QuestionType.DATE]: "Date",
  [QuestionType.TIME]: "Time",
  [QuestionType.DATETIME]: "Date & Time",
- [QuestionType.FILE_UPLOAD]: "File Upload",
+ [QuestionType.FILE_UPLOAD]: "File / Photo Upload",
  [QuestionType.SIGNATURE]: "Signature",
  [QuestionType.ADDRESS]: "Address",
  [QuestionType.CONSENT]: "Consent",

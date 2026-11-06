@@ -47,7 +47,7 @@ const questionTypes = [
  { type: "ranking", label: "Ranking", icon: ArrowUpDown, category: "Grid" },
  { type: "date", label: "Date", icon: Calendar, category: "Date & Time" },
  { type: "time", label: "Time", icon: Clock, category: "Date & Time" },
- { type: "fileUpload", label: "File Upload", icon: Upload, category: "Media" },
+ { type: "fileUpload", label: "File / Photo Upload", icon: Upload, category: "Media" },
  { type: "imageChoice", label: "Image Choice", icon: Image, category: "Media" },
  { type: "signature", label: "Signature", icon: PenTool, category: "Special" },
  { type: "address", label: "Address", icon: MapPin, category: "Special" },

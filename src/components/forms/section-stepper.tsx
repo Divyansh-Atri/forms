@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type Dispatch, type SetStateAction } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { ArrowLeft, ArrowRight, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -18,16 +18,20 @@ interface Section {
 
 interface SectionStepperProps {
  sections: Section[]
+ formId: string
  formTitle: string
  formDescription?: string
  responseData: Record<string, unknown>
- onDataChange: (data: Record<string, unknown>) => void
+ // Takes an updater too, so a file that finishes uploading later can't
+ // overwrite answers typed in the meantime
+ onDataChange: Dispatch<SetStateAction<Record<string, unknown>>>
  // Resolves to true once the response is saved
  onSubmit: () => Promise<boolean>
  isSubmitting: boolean
 }
 
 export function SectionStepper({
+ formId,
  sections,
  formTitle,
  formDescription,
@@ -68,10 +72,7 @@ export function SectionStepper({
  }
 
  const handleFieldChange = (questionId: string, value: unknown) => {
- onDataChange({
- ...responseData,
- [questionId]: value
- })
+ onDataChange((prev) => ({ ...prev, [questionId]: value }))
  }
 
  if (isComplete) {
@@ -190,6 +191,7 @@ export function SectionStepper({
  {question.required && <span className="ml-1 text-pink">*</span>}
  </label>
  <SectionField
+ formId={formId}
  question={question}
  value={responseData[question.id]}
  onChange={(value) => handleFieldChange(question.id, value)}

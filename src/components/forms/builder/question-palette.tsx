@@ -79,7 +79,7 @@ const questionCategories = [
  {
  name: "Special",
  questions: [
- { type: QuestionType.FILE_UPLOAD, label: "File Upload", icon: Upload },
+ { type: QuestionType.FILE_UPLOAD, label: "File / Photo Upload", icon: Upload },
  { type: QuestionType.SIGNATURE, label: "Signature", icon: PenTool },
  { type: QuestionType.ADDRESS, label: "Address", icon: MapPin },
  { type: QuestionType.CONSENT, label: "Consent", icon: MessageSquare },

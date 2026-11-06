@@ -3,8 +3,12 @@
 export interface SectionField {
  name: string
  label: string
- type: 'text' | 'number' | 'date' | 'email' | 'tel' | 'url' | 'textarea'
+ type: 'text' | 'number' | 'date' | 'email' | 'tel' | 'url' | 'textarea' | 'file' | 'image'
  required?: boolean
+ // For type "file" / "image"
+ accept?: string | string[] // e.g. "image/*", "pdf, docx", ["images", "pdf"]
+ maxFiles?: number // default 1, at most 10
+ maxSizeMB?: number // default and maximum 4
  placeholder?: string
  defaultValue?: string | number
  validation?: {
@@ -60,6 +64,18 @@ export function convertSectionFieldToQuestion(field: SectionField, sectionId: st
  sectionId,
  }
 
+ // File fields carry their upload rules ("image" means photos only)
+ if (baseQuestion.type === 'FILE_UPLOAD') {
+ const kind = field.type.toLowerCase()
+ const accept = field.accept ?? (kind === 'image' || kind === 'photo' ? 'image/*' : undefined)
+ return {
+ ...baseQuestion,
+ ...(accept !== undefined && { allowedTypes: Array.isArray(accept) ? accept : accept.split(',').map((t) => t.trim()) }),
+ ...(field.maxFiles !== undefined && { maxFiles: field.maxFiles }),
+ ...(field.maxSizeMB !== undefined && { maxFileSize: field.maxSizeMB }),
+ }
+ }
+
  // Add validation if present
  if (field.validation) {
  return {
@@ -80,8 +96,15 @@ function mapFieldTypeToQuestionType(fieldType: string): string {
  'email': 'EMAIL',
  'tel': 'PHONE',
  'url': 'URL',
+ 'file': 'FILE_UPLOAD',
+ 'files': 'FILE_UPLOAD',
+ 'upload': 'FILE_UPLOAD',
+ 'fileupload': 'FILE_UPLOAD',
+ 'attachment': 'FILE_UPLOAD',
+ 'image': 'FILE_UPLOAD',
+ 'photo': 'FILE_UPLOAD',
  }
- return typeMap[fieldType] || 'SHORT_TEXT'
+ return typeMap[fieldType.toLowerCase()] || 'SHORT_TEXT'
 }
 
 // Validate imported JSON structure

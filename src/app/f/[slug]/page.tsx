@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useRef, useState, use } from "react"
 import type { InputHTMLAttributes } from "react"
 import { AnimatePresence, MotionConfig, motion, useAnimationControls, type Variants } from "framer-motion"
-import { ArrowLeft, ArrowRight, Check, ChevronDown, FileText, Loader2, Lock, UploadCloud, X } from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, ChevronDown, FileText, Loader2, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SectionStepper } from "@/components/forms/section-stepper"
 import { TableForm } from "@/components/forms/table-form"
+import { FileUploadInput, uploadsInFlight } from "@/components/forms/file-upload-input"
 import { ErrorToast, MadeWith, ProgressRail, SuccessScreen, type SectionQuestion } from "@/components/forms/respondent-kit"
 import { Aurora, Eyebrow, RevealText, trackSpotlight } from "@/components/fx"
 import { cn } from "@/lib/utils"
@@ -25,6 +26,10 @@ interface FormQuestion {
  consentText?: string
  rows?: string[]
  columns?: string[]
+ // File upload settings
+ maxFileSize?: number
+ maxFiles?: number
+ allowedTypes?: unknown
 }
 
 interface PublicForm {
@@ -135,6 +140,19 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
  // Returns whether the response was saved
  const handleSubmit = async (): Promise<boolean> => {
  if (!form) return false
+
+ if (uploadsInFlight()) {
+ setSubmitError('Please wait for your files to finish uploading')
+ return false
+ }
+ // Sectioned and table forms show every field at once, so check required ones here
+ const missing = form.formSections
+ ?.flatMap((section) => section.questions)
+ .find((q) => q.required && !isAnswered(answers[q.id]))
+ if (missing) {
+ setSubmitError(`Please fill in "${missing.title || missing.label || 'all required fields'}"`)
+ return false
+ }
 
  setIsSubmitting(true)
  setSubmitError(null)
@@ -306,6 +324,7 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
  <div className="relative z-10">
  {form.layoutType === 'table' && hasSections ? (
  <TableForm
+ formId={form.id}
  sections={form.formSections!}
  formTitle={form.title}
  formDescription={form.description}
@@ -316,6 +335,7 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
  />
  ) : hasSections ? (
  <SectionStepper
+ formId={form.id}
  sections={form.formSections!}
  formTitle={form.title}
  formDescription={form.description}
@@ -360,6 +380,7 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
  {currentQuestion && (
  <motion.section key={currentQuestion.id} custom={direction} variants={slide} initial="enter" animate="center" exit="exit">
  <QuestionCard
+ formId={form.id}
  question={currentQuestion}
  index={currentStep}
  total={totalQuestions}
@@ -472,6 +493,7 @@ function WelcomeScreen({ form, total, onStart }: { form: PublicForm; total: numb
 }
 
 function QuestionCard({
+ formId,
  question,
  index,
  total,
@@ -484,6 +506,7 @@ function QuestionCard({
  isSubmitting,
  nudge,
 }: {
+ formId: string
  question: FormQuestion
  index: number
  total: number
@@ -537,7 +560,7 @@ function QuestionCard({
  )}
 
  <div className="mt-8">
- <QuestionInput question={question} value={value} onChange={onChange} onPick={onPick} />
+ <QuestionInput formId={formId} question={question} value={value} onChange={onChange} onPick={onPick} />
  </div>
 
  <AnimatePresence>
@@ -605,11 +628,13 @@ function LineInput({ className, ...props }: InputHTMLAttributes<HTMLInputElement
 
 // Question input component
 function QuestionInput({
+ formId,
  question,
  value,
  onChange,
  onPick,
 }: {
+ formId: string
  question: FormQuestion
  value: unknown
  onChange: (value: unknown) => void
@@ -785,11 +810,7 @@ function QuestionInput({
 
  case "fileUpload":
  return (
- <FileUploadInput
- question={question}
- value={value as { name: string; size: number; url?: string } | null}
- onChange={onChange}
- />
+ <FileUploadInput formId={formId} question={question} value={value} onChange={onChange} />
  )
 
  default:
@@ -801,173 +822,4 @@ function QuestionInput({
  />
  )
  }
-}
-
-// File upload: click or drag a file in; it goes to /api/upload (Vercel Blob)
-function FileUploadInput({
- question,
- value,
- onChange,
-}: {
- question: FormQuestion
- value: { name: string; size: number; url?: string } | null
- onChange: (value: unknown) => void
-}) {
- const [isUploading, setIsUploading] = useState(false)
- const [uploadError, setUploadError] = useState<string | null>(null)
- const [isDragging, setIsDragging] = useState(false)
- const inputRef = useRef<HTMLInputElement>(null)
- const maxSizeMB = question.max || 5
-
- const handleFileUpload = async (file: File) => {
- const maxSize = maxSizeMB * 1024 * 1024
-
- if (file.size > maxSize) {
- setUploadError(`File too big! Keep it under ${maxSizeMB}MB`)
- return
- }
-
- setIsUploading(true)
- setUploadError(null)
-
- try {
- const formData = new FormData()
- formData.append('file', file)
- formData.append('maxSize', String(maxSizeMB))
-
- const response = await fetch('/api/upload', {
- method: 'POST',
- body: formData,
- })
-
- const result = await response.json()
-
- if (result.success) {
- onChange({
- name: result.data.name,
- size: result.data.size,
- type: result.data.type,
- url: result.data.url,
- })
- } else {
- setUploadError(result.error || 'Upload failed')
- }
- } catch {
- setUploadError('Something went wrong. Try again!')
- } finally {
- setIsUploading(false)
- }
- }
-
- return (
- <div className="space-y-3">
- <AnimatePresence>
- {uploadError && (
- <motion.div
- initial={{ opacity: 0, y: -6 }}
- animate={{ opacity: 1, y: 0 }}
- exit={{ opacity: 0 }}
- className="animate-shake rounded-2xl border border-destructive/15 bg-destructive/5 px-4 py-3 text-sm font-medium text-destructive"
- >
- {uploadError}
- </motion.div>
- )}
- </AnimatePresence>
-
- {!value ? (
- <div
- role="button"
- tabIndex={0}
- aria-label="Upload a file"
- onClick={() => !isUploading && inputRef.current?.click()}
- onKeyDown={(e) => {
- if (e.key === " ") {
- e.preventDefault()
- if (!isUploading) inputRef.current?.click()
- }
- }}
- onDragOver={(e) => {
- e.preventDefault()
- setIsDragging(true)
- }}
- onDragLeave={() => setIsDragging(false)}
- onDrop={(e) => {
- e.preventDefault()
- setIsDragging(false)
- const file = e.dataTransfer.files?.[0]
- if (file && !isUploading) handleFileUpload(file)
- }}
- className={cn(
- "group relative cursor-pointer overflow-hidden rounded-3xl border-2 border-dashed px-6 py-10 text-center transition-all duration-300 sm:py-12",
- isDragging
- ? "scale-[1.01] border-violet/60 bg-violet/5"
- : "border-[#e2e2ea] bg-white/70 hover:border-foreground/25 hover:bg-white"
- )}
- >
- <input
- ref={inputRef}
- type="file"
- className="hidden"
- disabled={isUploading}
- onChange={(e) => {
- const file = e.target.files?.[0]
- if (file) handleFileUpload(file)
- e.target.value = ""
- }}
- />
- {isUploading ? (
- <div className="flex flex-col items-center">
- <p className="text-lg font-semibold">Uploading…</p>
- <div className="mt-5 h-1.5 w-48 overflow-hidden rounded-full bg-muted">
- <motion.div
- className="h-full w-1/2 rounded-full bg-brand"
- animate={{ x: ["-100%", "200%"] }}
- transition={{ repeat: Infinity, duration: 1.1, ease: "easeInOut" }}
- />
- </div>
- </div>
- ) : (
- <>
- <motion.div
- animate={isDragging ? { y: -6, scale: 1.08 } : { y: 0, scale: 1 }}
- className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-2xl bg-primary shadow-[0_16px_34px_-14px_rgba(124,58,237,0.7)] transition-transform duration-500 group-hover:-rotate-6"
- >
- <UploadCloud className="h-7 w-7 text-white" />
- </motion.div>
- <p className="text-lg font-semibold">
- {isDragging ? "Drop it!" : <>Drop a file here or <span className="underline decoration-violet/40 underline-offset-4">browse</span></>}
- </p>
- <p className="mt-1.5 text-sm text-muted-foreground">Up to {maxSizeMB} MB</p>
- </>
- )}
- </div>
- ) : (
- <motion.div
- initial={{ opacity: 0, scale: 0.96 }}
- animate={{ opacity: 1, scale: 1 }}
- className="flex items-center gap-4 rounded-2xl border border-border bg-white p-4 shadow-premium"
- >
- <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand">
- <Check className="h-6 w-6 text-white" strokeWidth={3} />
- </span>
- <div className="min-w-0 flex-1">
- <p className="truncate font-semibold">{value.name}</p>
- <p className="text-sm text-muted-foreground">{(value.size / 1024 / 1024).toFixed(2)} MB · uploaded</p>
- </div>
- <Button
- variant="ghost"
- size="icon"
- aria-label="Remove file"
- onClick={(e) => {
- e.stopPropagation()
- onChange(null)
- }}
- className="text-muted-foreground hover:text-destructive"
- >
- <X className="h-4 w-4" />
- </Button>
- </motion.div>
- )}
- </div>
- )
 }

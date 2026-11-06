@@ -7,6 +7,7 @@ import {
  cleanResponseData,
  collectQuestionIds,
 } from '@/lib/response-guard'
+import { fileRules, fileUrl, isFileQuestionType } from '@/lib/attachments'
 
 export const dynamic = 'force-dynamic'
 
@@ -135,16 +136,59 @@ export async function POST(request: NextRequest) {
  }
 
  // Keep only answers to this form's questions; refuse inline files
- const questionIds = collectQuestionIds([
+ const questionLists = [
  form.questions,
  ...form.formSections.map((section) => section.questions),
- ])
+ ]
+ const questionIds = collectQuestionIds(questionLists)
  const checked = cleanResponseData(data, questionIds)
  if (!checked.ok) {
  return NextResponse.json({
  success: false,
  error: checked.error,
  }, { status: checked.status })
+ }
+
+ // File answers: keep only files that were really uploaded to that
+ // question of this form and not used by another response, and rebuild
+ // them from the database instead of trusting the browser's copy
+ const answers = { ...checked.data }
+ const wanted = new Map<string, string[]>()
+ for (const list of questionLists) {
+ if (!Array.isArray(list)) continue
+ for (const q of list as Array<Record<string, unknown> | null>) {
+ if (!q || typeof q.id !== 'string' || !isFileQuestionType(q.type) || !(q.id in answers)) continue
+ const value = answers[q.id]
+ const ids = (Array.isArray(value) ? value : [value])
+ .map((f) => (f as { id?: unknown } | null)?.id)
+ .filter((id): id is string => typeof id === 'string')
+ wanted.set(q.id, [...new Set(ids)].slice(0, fileRules(q).maxFiles))
+ }
+ }
+ const allIds = [...wanted.values()].flat()
+ const found = allIds.length === 0 ? [] : await prisma.attachment.findMany({
+ where: { id: { in: allIds }, formId, responseId: null },
+ select: { id: true, questionId: true, name: true, size: true, type: true },
+ })
+ const byId = new Map(found.map((f) => [f.id, f]))
+ const claimed: string[] = []
+ for (const [questionId, ids] of wanted) {
+ const files = ids
+ .map((id) => byId.get(id))
+ .filter((f): f is NonNullable<typeof f> => !!f && f.questionId === questionId)
+ .map((f) => ({ id: f.id, name: f.name, size: f.size, type: f.type, url: fileUrl(f.id) }))
+ if (files.length > 0) {
+ answers[questionId] = files
+ claimed.push(...files.map((f) => f.id))
+ } else {
+ delete answers[questionId]
+ }
+ }
+ if (Object.keys(answers).length === 0) {
+ return NextResponse.json({
+ success: false,
+ error: "Please answer at least one question",
+ }, { status: 400 })
  }
 
  // Build metadata here rather than storing whatever the client sent
@@ -159,9 +203,12 @@ export async function POST(request: NextRequest) {
  const newResponse = await prisma.response.create({
  data: {
  formId,
- data: checked.data as Prisma.InputJsonObject,
+ data: answers as Prisma.InputJsonObject,
  metadata,
  isComplete: true,
+ ...(claimed.length > 0 && {
+ attachments: { connect: claimed.map((id) => ({ id })) },
+ }),
  }
  })
 

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card } from "@/components/ui/card"
 import { Question, QuestionType, Choice } from "@/types"
+import { MAX_FILE_MB, MAX_FILES_PER_QUESTION } from "@/lib/attachments"
 import { X, Plus, Trash2, GripVertical } from "lucide-react"
 
 interface QuestionEditorProps {
@@ -301,26 +302,33 @@ function FileUploadSettings({
  return (
  <div className="space-y-4">
  <h4 className="font-medium text-sm">File Upload Settings</h4>
+ <p className="text-xs text-muted-foreground">
+ Files are saved in your database. Photos are compressed automatically, so most take about 300 KB.
+ </p>
  <div>
- <Label className="text-xs">Max File Size (MB)</Label>
+ <Label className="text-xs">Max File Size (MB, up to {MAX_FILE_MB})</Label>
  <Input
  type="number"
- value={q.maxFileSize || 10}
- onChange={(e) => onUpdate({ maxFileSize: parseInt(e.target.value) } as any)}
+ min={1}
+ max={MAX_FILE_MB}
+ value={Math.min(q.maxFileSize || MAX_FILE_MB, MAX_FILE_MB)}
+ onChange={(e) => onUpdate({ maxFileSize: Math.min(Math.max(parseInt(e.target.value) || 1, 1), MAX_FILE_MB) } as any)}
  className="mt-1"
  />
  </div>
  <div>
- <Label className="text-xs">Max Files</Label>
+ <Label className="text-xs">Max Files (up to {MAX_FILES_PER_QUESTION})</Label>
  <Input
  type="number"
+ min={1}
+ max={MAX_FILES_PER_QUESTION}
  value={q.maxFiles || 1}
- onChange={(e) => onUpdate({ maxFiles: parseInt(e.target.value) } as any)}
+ onChange={(e) => onUpdate({ maxFiles: Math.min(Math.max(parseInt(e.target.value) || 1, 1), MAX_FILES_PER_QUESTION) } as any)}
  className="mt-1"
  />
  </div>
  <div>
- <Label className="text-xs">Allowed Types (comma separated)</Label>
+ <Label className="text-xs">Allowed Types (comma separated, blank = any)</Label>
  <Input
  value={(q.allowedTypes || []).join(", ")}
  onChange={(e) =>
@@ -329,7 +337,7 @@ function FileUploadSettings({
  } as any)
  }
  className="mt-1"
- placeholder="pdf, jpg, png"
+ placeholder="images, pdf, docx"
  />
  </div>
  </div>

@@ -10,6 +10,8 @@ import { AlertCircle, RotateCcw, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { burstConfetti } from "@/components/fx"
 import { cn } from "@/lib/utils"
+import { isFileQuestionType } from "@/lib/attachments"
+import { FileUploadInput } from "@/components/forms/file-upload-input"
 
 /** Gradient progress line pinned to the top of the viewport. */
 export function ProgressRail({ value }: { value: number }) {
@@ -153,6 +155,10 @@ export interface SectionQuestion {
  description?: string
  placeholder?: string
  required?: boolean
+ // File upload settings
+ maxFileSize?: number
+ maxFiles?: number
+ allowedTypes?: unknown
 }
 
 const SECTION_INPUT_TYPES: Record<string, string> = {
@@ -162,19 +168,25 @@ const SECTION_INPUT_TYPES: Record<string, string> = {
 
 /**
  * Input for section/table questions. Imported JSON forms use the types
- * SHORT_TEXT, LONG_TEXT, NUMBER, DATE, EMAIL, PHONE and URL.
+ * SHORT_TEXT, LONG_TEXT, NUMBER, DATE, EMAIL, PHONE, URL and FILE_UPLOAD.
  */
 export function SectionField({
+ formId,
  question,
  value,
  onChange,
  compact = false,
 }: {
+ formId: string
  question: SectionQuestion
  value: unknown
- onChange: (value: string) => void
+ onChange: (value: unknown) => void
  compact?: boolean
 }) {
+ if (isFileQuestionType(question.type)) {
+ return <FileUploadInput formId={formId} question={question} value={value} onChange={onChange} compact={compact} />
+ }
+
  const type = (question.type || "short_text").toLowerCase()
  const base = cn(
  "w-full rounded-2xl border-[1.5px] border-border bg-white/90 px-5 text-foreground placeholder:text-muted-foreground/50",

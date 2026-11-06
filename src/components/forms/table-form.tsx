@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type Dispatch, type SetStateAction } from "react"
 import { motion } from "framer-motion"
 import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -15,16 +15,20 @@ interface TableFormProps {
  order: number
  questions: SectionQuestion[]
  }>
+ formId: string
  formTitle: string
  formDescription?: string
  responseData: Record<string, unknown>
- onDataChange: (data: Record<string, unknown>) => void
+ // Takes an updater too, so a file that finishes uploading later can't
+ // overwrite answers typed in the meantime
+ onDataChange: Dispatch<SetStateAction<Record<string, unknown>>>
  // Resolves to true once the response is saved
  onSubmit: () => Promise<boolean>
  isSubmitting: boolean
 }
 
 export function TableForm({
+ formId,
  sections,
  formTitle,
  formDescription,
@@ -36,10 +40,7 @@ export function TableForm({
  const [isComplete, setIsComplete] = useState(false)
 
  const handleInputChange = (fieldId: string, value: unknown) => {
- onDataChange({
- ...responseData,
- [fieldId]: value
- })
+ onDataChange((prev) => ({ ...prev, [fieldId]: value }))
  }
 
  const handleSubmit = async () => {
@@ -123,6 +124,7 @@ export function TableForm({
  )}
  </div>
  <SectionField
+ formId={formId}
  compact
  question={question}
  value={responseData[question.id]}

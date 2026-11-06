@@ -191,6 +191,7 @@ model Form {
   // Relations
   responses     Response[]
   formSections  Section[]    // New: Sections for multi-page forms
+  attachments   Attachment[]
   
   // Timestamps
   createdAt     DateTime   @default(now())
@@ -265,7 +266,8 @@ model Response {
   completedAt   DateTime?
   
   // File uploads
-  files         FileUpload[]
+  files         FileUpload[]   // legacy: Vercel Blob URLs (unused)
+  attachments   Attachment[]
 
   @@index([formId, createdAt])
   @@index([formId, isComplete])
@@ -286,6 +288,34 @@ model FileUpload {
   createdAt   DateTime  @default(now())
 
   @@index([responseId])
+}
+
+// Files respondents attach to a "File upload" question, stored in Postgres.
+// A file is uploaded as soon as it is picked (responseId still null) and is
+// linked to the response when the form is submitted. Unlinked files older
+// than a day are deleted by the upload route.
+model Attachment {
+  id          String    @id @default(cuid())
+  form        Form      @relation(fields: [formId], references: [id], onDelete: Cascade)
+  formId      String
+  response    Response? @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  responseId  String?
+  questionId  String
+
+  name        String
+  type        String
+  size        Int
+  data        Bytes
+
+  // sha256 of the uploader's IP, only for rate limiting
+  ipHash      String?
+
+  createdAt   DateTime  @default(now())
+
+  @@index([formId])
+  @@index([responseId])
+  @@index([responseId, createdAt])
+  @@index([ipHash, createdAt])
 }
 
 // ================== INTEGRATIONS ==================

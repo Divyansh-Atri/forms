@@ -20,7 +20,9 @@ import {
  TrendingUp,
  Loader2,
  X,
+ Paperclip,
 } from "lucide-react"
+import { asFileList, formatBytes, isImageType } from "@/lib/attachments"
 
 interface Question {
  id: string
@@ -48,26 +50,50 @@ interface Response {
  }
 }
 
+// Short text for list previews and search
+const valueText = (value: unknown): string => {
+ const files = asFileList(value)
+ if (files) return files.map((f) => f.name).join(', ')
+ if (Array.isArray(value)) return value.join(', ')
+ return String(value)
+}
+
 const renderResponseValue = (value: unknown) => {
- // File Upload
- const isFile = value && typeof value === 'object' && 'url' in value && 'name' in value
- if (isFile) {
+ // File Upload (stored in the database; old answers may hold a Blob URL)
+ const files = asFileList(value)
+ if (files) {
  return (
- <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-lg">
- <div className="flex-1">
- <p className="font-medium text-slate-900">{(value as any).name}</p>
- <p className="text-sm text-slate-500">
- {((value as any).size / 1024 / 1024).toFixed(2)} MB
- </p>
+ <div className="grid gap-3 sm:grid-cols-2">
+ {files.map((f, i) => (
+ <div key={f.id || i} className="overflow-hidden rounded-xl border border-border bg-white">
+ {isImageType(f.type) && (
+ <a href={f.url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden bg-muted">
+ {/* eslint-disable-next-line @next/next/no-img-element */}
+ <img
+ src={f.url}
+ alt={f.name}
+ loading="lazy"
+ className="h-44 w-full object-cover transition-transform duration-500 hover:scale-105"
+ />
+ </a>
+ )}
+ <div className="flex items-center gap-3 p-3">
+ <Paperclip className="h-4 w-4 shrink-0 text-violet" />
+ <div className="min-w-0 flex-1">
+ <p className="truncate text-sm font-medium text-slate-900">{f.name}</p>
+ {f.size !== undefined && <p className="text-xs text-slate-500">{formatBytes(f.size)}</p>}
  </div>
  <a
- href={(value as any).url}
+ href={f.url.startsWith('/api/files/') ? `${f.url}?download=1` : f.url}
  target="_blank"
  rel="noopener noreferrer"
- className="px-4 py-2 bg-primary text-white rounded-full hover:bg-primary/90 transition-colors text-sm font-medium"
+ className="shrink-0 rounded-full bg-primary px-3.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary/90"
  >
  Download
  </a>
+ </div>
+ </div>
+ ))}
  </div>
  )
  }
@@ -219,6 +245,10 @@ export default function ResponsesPage() {
  const rows = sortedResponses.map(response => {
  const formatValue = (value: unknown): string => {
  if (value === null || value === undefined) return ''
+ const files = asFileList(value)
+ if (files) {
+ return files.map((f) => `${f.name} (${new URL(f.url, window.location.origin).href})`).join('; ')
+ }
  if (Array.isArray(value)) return value.join('; ')
  if (typeof value === 'object') {
  if ('url' in value && 'name' in value) return (value as any).name
@@ -256,7 +286,7 @@ export default function ResponsesPage() {
 
  const filteredResponses = responses.filter((response) =>
  Object.values(response.data).some((value) =>
- String(value).toLowerCase().includes(searchQuery.toLowerCase())
+ valueText(value).toLowerCase().includes(searchQuery.toLowerCase())
  )
  )
 
@@ -447,10 +477,8 @@ export default function ResponsesPage() {
  <div key={i}>
  <span className="text-xs text-slate-500">{item.title}: </span>
  <span className="text-slate-900 font-medium">
- {Array.isArray(item.value)
- ? item.value.join(', ')
- : String(item.value).slice(0, 50)}
- {String(item.value).length > 50 && '...'}
+ {valueText(item.value).slice(0, 50)}
+ {valueText(item.value).length > 50 && '...'}
  </span>
  </div>
  ))
