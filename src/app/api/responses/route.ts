@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import type { Prisma } from '@prisma/client'
+import {
+ MAX_RESPONSE_BYTES,
+ byteLength,
+ cleanResponseData,
+ collectQuestionIds,
+} from '@/lib/response-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -71,10 +78,32 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
  try {
  const { prisma } = await import('@/lib/db')
- const body = await request.json()
- const { formId, data, metadata } = body
 
- if (!formId) {
+ // Reject oversized submissions before parsing them
+ const tooLarge = NextResponse.json({
+ success: false,
+ error: "Response is too large",
+ }, { status: 413 })
+
+ const declaredSize = Number(request.headers.get('content-length') || 0)
+ if (declaredSize > MAX_RESPONSE_BYTES) return tooLarge
+
+ const raw = await request.text()
+ if (byteLength(raw) > MAX_RESPONSE_BYTES) return tooLarge
+
+ let body: { formId?: unknown; data?: unknown; metadata?: { referrer?: unknown } }
+ try {
+ body = JSON.parse(raw)
+ } catch {
+ return NextResponse.json({
+ success: false,
+ error: "Invalid JSON",
+ }, { status: 400 })
+ }
+
+ const { formId, data } = body ?? {}
+
+ if (!formId || typeof formId !== 'string') {
  return NextResponse.json({
  success: false,
  error: "formId is required",
@@ -84,7 +113,11 @@ export async function POST(request: NextRequest) {
  // Check if form exists and is published
  const form = await prisma.form.findUnique({
  where: { id: formId },
- select: { status: true }
+ select: {
+ status: true,
+ questions: true,
+ formSections: { select: { questions: true } },
+ }
  })
 
  if (!form) {
@@ -101,11 +134,33 @@ export async function POST(request: NextRequest) {
  }, { status: 403 })
  }
 
+ // Keep only answers to this form's questions; refuse inline files
+ const questionIds = collectQuestionIds([
+ form.questions,
+ ...form.formSections.map((section) => section.questions),
+ ])
+ const checked = cleanResponseData(data, questionIds)
+ if (!checked.ok) {
+ return NextResponse.json({
+ success: false,
+ error: checked.error,
+ }, { status: checked.status })
+ }
+
+ // Build metadata here rather than storing whatever the client sent
+ const metadata: Record<string, string> = {
+ userAgent: (request.headers.get('user-agent') || '').slice(0, 500),
+ }
+ const referrer = body.metadata?.referrer
+ if (typeof referrer === 'string' && referrer) {
+ metadata.referrer = referrer.slice(0, 500)
+ }
+
  const newResponse = await prisma.response.create({
  data: {
  formId,
- data: data || {},
- metadata: metadata || {},
+ data: checked.data as Prisma.InputJsonObject,
+ metadata,
  isComplete: true,
  }
  })
