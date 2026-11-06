@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { animate, AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { JsonImportDialog } from "@/components/forms/json-import-dialog"
+import { Eyebrow, trackSpotlight } from "@/components/fx"
+import { cn } from "@/lib/utils"
 import {
  Plus,
  Search,
@@ -19,18 +22,22 @@ import {
  CheckCircle,
  Pause,
  Archive,
- Loader2,
- FileJson
+ FileJson,
+ Layers,
+ Send,
+ Sparkles
 } from "lucide-react"
 
 interface Form {
  id: string
+ slug?: string
  title: string
  description: string
  status: string
  responses?: number
  createdAt: string
  updatedAt: string
+ _count?: { responses?: number }
 }
 
 const statusConfig = {
@@ -38,6 +45,36 @@ const statusConfig = {
  PUBLISHED: { label: "Published", icon: CheckCircle, color: "success" },
  CLOSED: { label: "Closed", icon: Pause, color: "warning" },
  ARCHIVED: { label: "Archived", icon: Archive, color: "secondary" },
+}
+
+// Each form gets its own cover colours, picked from its id so they stay stable
+const COVERS = [
+ ["#7c3aed", "#ec4899"],
+ ["#ec4899", "#f97316"],
+ ["#06b6d4", "#7c3aed"],
+ ["#f97316", "#facc15"],
+ ["#7c3aed", "#06b6d4"],
+ ["#ec4899", "#7c3aed"],
+]
+
+function coverFor(id: string) {
+ let hash = 0
+ for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0
+ return COVERS[hash % COVERS.length]
+}
+
+function CountUp({ value }: { value: number }) {
+ const reduce = useReducedMotion()
+ const count = useMotionValue(0)
+ const rounded = useTransform(count, (v) => Math.round(v))
+
+ useEffect(() => {
+ if (reduce) { count.set(value); return }
+ const controls = animate(count, value, { duration: 0.9, ease: [0.16, 1, 0.3, 1] })
+ return () => controls.stop()
+ }, [count, value, reduce])
+
+ return <motion.span>{rounded}</motion.span>
 }
 
 export default function FormsPage() {
@@ -62,7 +99,7 @@ export default function FormsPage() {
  } else {
  setError(result.error || 'Failed to fetch forms')
  }
- } catch (err) {
+ } catch {
  setError('Failed to connect to server')
  } finally {
  setIsLoading(false)
@@ -148,104 +185,243 @@ export default function FormsPage() {
 
  if (isLoading) {
  return (
- <div className="flex items-center justify-center h-64">
- <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+ <div className="space-y-8" aria-busy="true" aria-label="Loading forms">
+ <div className="space-y-3">
+ <div className="skeleton h-6 w-28 rounded-full" />
+ <div className="skeleton h-12 w-64" />
+ </div>
+ <div className="grid gap-4 sm:grid-cols-3">
+ {[0, 1, 2].map((i) => <div key={i} className="skeleton h-24 rounded-2xl" />)}
+ </div>
+ <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+ {[0, 1, 2].map((i) => (
+ <div key={i} className="rounded-2xl border border-border bg-white/80 overflow-hidden">
+ <div className="skeleton h-24 rounded-none" />
+ <div className="p-5 space-y-3">
+ <div className="skeleton h-5 w-2/3" />
+ <div className="skeleton h-4 w-full" />
+ <div className="skeleton h-4 w-1/2" />
+ </div>
+ </div>
+ ))}
+ </div>
  </div>
  )
  }
 
  if (error) {
  return (
- <Card className="p-12 text-center bg-card border-border">
+ <Card className="p-12 text-center bg-white/90 border-border">
  <p className="text-destructive mb-4">{error}</p>
  <Button onClick={() => window.location.reload()}>Retry</Button>
  </Card>
  )
  }
 
+ const totalResponses = forms.reduce((sum, f) => sum + (f._count?.responses || 0), 0)
+ const publishedCount = forms.filter((f) => f.status === "PUBLISHED").length
+ const stats = [
+ { label: "Forms", value: forms.length, icon: Layers, tint: "from-violet/15 to-violet/0", iconColor: "text-violet" },
+ { label: "Live now", value: publishedCount, icon: Send, tint: "from-pink/15 to-pink/0", iconColor: "text-pink" },
+ { label: "Responses", value: totalResponses, icon: BarChart3, tint: "from-orange/15 to-orange/0", iconColor: "text-orange" },
+ ]
+
  return (
- <div className="space-y-6">
+ <div className="space-y-8">
  {/* Header */}
- <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
- <div>
- <h1 className="text-2xl font-bold text-foreground">Forms</h1>
- <p className="text-muted-foreground">Create and manage your forms</p>
- </div>
- <div className="flex gap-2">
+ <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5">
+ <motion.div
+ initial={{ opacity: 0, y: 12 }}
+ animate={{ opacity: 1, y: 0 }}
+ transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+ >
+ <Eyebrow className="mb-4">Workspace</Eyebrow>
+ <h1 className="text-4xl sm:text-5xl font-semibold tracking-[-0.04em] text-foreground">
+ Your <span className="font-display italic font-normal tracking-normal gradient-text pr-1">forms</span>
+ </h1>
+ <p className="mt-2 text-muted-foreground">Create and manage your forms</p>
+ </motion.div>
+ <motion.div
+ className="flex gap-2"
+ initial={{ opacity: 0, y: 12 }}
+ animate={{ opacity: 1, y: 0 }}
+ transition={{ duration: 0.6, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+ >
  <Button variant="outline" onClick={() => setShowImportDialog(true)}>
- <FileJson className="w-4 h-4 mr-2" />
+ <FileJson className="w-4 h-4" />
  Import JSON
  </Button>
  <Link href="/forms/new">
  <Button>
- <Plus className="w-4 h-4 mr-2" />
+ <Plus className="w-4 h-4" />
  Create Form
  </Button>
  </Link>
+ </motion.div>
  </div>
+
+ {/* Stats */}
+ <div className="grid grid-cols-3 gap-3 sm:gap-4">
+ {stats.map((stat, i) => (
+ <motion.div
+ key={stat.label}
+ initial={{ opacity: 0, y: 16, filter: "blur(6px)" }}
+ animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+ transition={{ duration: 0.7, delay: 0.12 + i * 0.07, ease: [0.16, 1, 0.3, 1] }}
+ onPointerMove={trackSpotlight}
+ className="spotlight relative overflow-hidden rounded-2xl border border-black/[0.06] bg-white/80 backdrop-blur p-3 sm:p-5"
+ >
+ <div className={cn("absolute -top-12 -right-12 w-32 h-32 rounded-full bg-gradient-to-br blur-xl", stat.tint)} />
+ <div className="relative flex items-center gap-2 text-[10px] sm:text-xs font-medium uppercase tracking-[0.06em] sm:tracking-[0.12em] text-muted-foreground">
+ <stat.icon className={cn("hidden sm:block w-3.5 h-3.5 shrink-0", stat.iconColor)} />
+ <span className="truncate">{stat.label}</span>
+ </div>
+ <p className="relative mt-1.5 sm:mt-2 text-2xl sm:text-4xl font-semibold tracking-[-0.04em] tabular-nums text-foreground">
+ <CountUp value={stat.value} />
+ </p>
+ </motion.div>
+ ))}
  </div>
 
  {/* Filters */}
- <div className="flex flex-col sm:flex-row gap-4">
- <div className="relative flex-1 max-w-md">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+ <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+ <div className="relative flex-1 max-w-md group">
+ <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10 transition-colors group-focus-within:text-violet" />
  <Input
  placeholder="Search forms..."
  value={searchQuery}
  onChange={(e) => setSearchQuery(e.target.value)}
- className="pl-9"
+ className="pl-10 rounded-full h-11 bg-white/90"
  />
  </div>
- <div className="flex gap-2">
- {["ALL", "PUBLISHED", "DRAFT", "CLOSED"].map((status) => (
- <Button
+ <div className="inline-flex self-start sm:self-auto items-center gap-0.5 rounded-full border border-black/[0.06] bg-white/80 backdrop-blur p-1 shadow-[0_1px_2px_rgba(16,16,32,0.04)]">
+ {["ALL", "PUBLISHED", "DRAFT", "CLOSED"].map((status) => {
+ const active = selectedStatus === (status === "ALL" ? null : status) || (status === "ALL" && !selectedStatus)
+ return (
+ <button
  key={status}
- variant={selectedStatus === (status === "ALL" ? null : status) || (status === "ALL" && !selectedStatus) ? "default" : "outline"}
- size="sm"
  onClick={() => setSelectedStatus(status === "ALL" ? null : status)}
+ className={cn(
+ "relative h-9 px-3.5 sm:px-4 rounded-full text-sm font-medium transition-colors",
+ active ? "text-white" : "text-muted-foreground hover:text-foreground"
+ )}
  >
+ {active && (
+ <motion.span
+ layoutId="status-pill"
+ className="absolute inset-0 rounded-full bg-primary shadow-[0_8px_20px_-10px_rgba(124,58,237,0.8)]"
+ transition={{ type: "spring", stiffness: 420, damping: 34 }}
+ />
+ )}
+ <span className="relative">
  {status === "ALL" ? "All" : status.charAt(0) + status.slice(1).toLowerCase()}
- </Button>
- ))}
+ </span>
+ </button>
+ )
+ })}
  </div>
  </div>
 
  {/* Forms Grid */}
  {filteredForms.length === 0 ? (
- <Card className="p-12 text-center bg-card border-border">
- <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
- <h3 className="text-lg font-semibold mb-2 text-foreground">No forms found</h3>
- <p className="text-muted-foreground mb-4">
+ <motion.div
+ initial={{ opacity: 0, scale: 0.97 }}
+ animate={{ opacity: 1, scale: 1 }}
+ transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+ className="relative overflow-hidden rounded-3xl border border-dashed border-black/[0.12] bg-white/70 backdrop-blur px-6 py-16 text-center"
+ >
+ <div className="absolute left-1/2 top-6 -translate-x-1/2 w-56 h-56 rounded-full bg-brand opacity-[0.12] blur-3xl" />
+ <div className="relative mx-auto mb-6 w-16 h-16 animate-float">
+ <div className="absolute inset-0 rounded-2xl bg-brand blur-lg opacity-50" />
+ <div className="relative w-16 h-16 rounded-2xl bg-primary flex items-center justify-center">
+ <FileText className="w-7 h-7 text-white" />
+ </div>
+ </div>
+ <h3 className="relative text-2xl font-semibold mb-2 text-foreground">
+ No forms <span className="font-display italic font-normal">found</span>
+ </h3>
+ <p className="relative text-muted-foreground mb-6">
  {searchQuery ? "Try adjusting your search" : "Create your first form to get started"}
  </p>
- <Link href="/forms/new">
- <Button>
- <Plus className="w-4 h-4 mr-2" />
+ <Link href="/forms/new" className="relative inline-block">
+ <Button size="lg">
+ <Plus className="w-4 h-4" />
  Create Form
  </Button>
  </Link>
- </Card>
+ </motion.div>
  ) : (
- <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
- {filteredForms.map((form) => {
+ <motion.div layout className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+ <AnimatePresence mode="popLayout">
+ {filteredForms.map((form, index) => {
  const status = statusConfig[form.status as keyof typeof statusConfig] || statusConfig.DRAFT
+ const [c1, c2] = coverFor(form.id)
+ const responseCount = form._count?.responses || 0
  return (
- <Card key={form.id} hover className="overflow-hidden bg-card border-border">
- <div className="p-5">
- <div className="flex items-start justify-between mb-3">
+ <motion.div
+ key={form.id}
+ layout
+ initial={{ opacity: 0, y: 24, filter: "blur(8px)" }}
+ animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+ exit={{ opacity: 0, scale: 0.95, filter: "blur(6px)", transition: { duration: 0.2, ease: "easeOut" } }}
+ transition={{ duration: 0.6, delay: Math.min(index, 8) * 0.06, ease: [0.16, 1, 0.3, 1] }}
+ onPointerMove={trackSpotlight}
+ className={cn(
+ "spotlight group relative rounded-2xl border border-black/[0.06] bg-white/90 backdrop-blur",
+ "shadow-[0_1px_2px_rgba(16,16,32,0.04)] transition-[box-shadow,transform,border-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
+ "hover:-translate-y-1 hover:border-violet/20 hover:shadow-[0_28px_56px_-28px_rgba(124,58,237,0.35)]",
+ openMenu === form.id && "z-20"
+ )}
+ >
+ {/* Cover */}
+ <Link href={`/forms/${form.id}`} className="block relative h-24 overflow-hidden rounded-t-2xl" aria-label={`Edit ${form.title}`}>
+ <div className="absolute inset-0 bg-[#fbfbfd]" />
+ <div
+ className="absolute -left-6 -top-10 w-40 h-40 rounded-full blur-2xl opacity-45 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-6 group-hover:scale-110"
+ style={{ background: c1 }}
+ />
+ <div
+ className="absolute -right-8 -bottom-16 w-44 h-44 rounded-full blur-2xl opacity-40 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-x-6 group-hover:scale-110"
+ style={{ background: c2 }}
+ />
+ <div className="absolute inset-0 [background-image:radial-gradient(rgba(20,20,40,0.12)_1px,transparent_1px)] [background-size:14px_14px] [mask-image:linear-gradient(to_bottom,#000,transparent)]" />
+ <span className="absolute left-5 bottom-1 font-display italic text-6xl leading-none text-foreground/80 select-none transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-translate-y-1 group-hover:-rotate-3">
+ {form.title.trim().charAt(0).toUpperCase() || "F"}
+ </span>
+ <div className="absolute right-3 top-3">
+ <Badge variant={status.color as "default" | "secondary" | "success" | "warning" | "danger" | "outline"} className="shadow-sm">
+ {form.status === "PUBLISHED" ? (
+ <span className="relative mr-1.5 flex h-1.5 w-1.5">
+ <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-70 animate-ping" />
+ <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+ </span>
+ ) : (
+ <status.icon className="w-3 h-3 mr-1" />
+ )}
+ {status.label}
+ </Badge>
+ </div>
+ </Link>
+
+ <div className="p-5 pt-4">
+ <div className="flex items-start justify-between gap-2 mb-4">
  <div className="flex-1 min-w-0">
  <Link href={`/forms/${form.id}`}>
- <h3 className="font-semibold truncate text-foreground hover:text-primary transition-colors">
+ <h3 className="font-semibold text-[1.05rem] truncate text-foreground transition-colors group-hover:text-violet">
  {form.title}
  </h3>
  </Link>
- <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+ <p className="text-sm text-muted-foreground line-clamp-2 mt-1 min-h-[1.25rem]">
  {form.description}
  </p>
  </div>
  <div className="relative">
  <button
- className="p-1 rounded hover:bg-accent"
+ className={cn(
+ "p-1.5 rounded-full transition-colors",
+ openMenu === form.id ? "bg-black/[0.06]" : "hover:bg-black/[0.05]"
+ )}
+ aria-label="Form actions"
  onClick={(e) => {
  e.stopPropagation()
  setOpenMenu(openMenu === form.id ? null : form.id)
@@ -253,51 +429,56 @@ export default function FormsPage() {
  >
  <MoreVertical className="w-4 h-4 text-muted-foreground" />
  </button>
+ <AnimatePresence>
  {openMenu === form.id && (
- <div className="absolute right-0 top-full mt-1 w-32 bg-card border border-border rounded-lg shadow-lg z-10">
+ <motion.div
+ initial={{ opacity: 0, scale: 0.92, y: -6 }}
+ animate={{ opacity: 1, scale: 1, y: 0 }}
+ exit={{ opacity: 0, scale: 0.95, y: -4, transition: { duration: 0.12, ease: "easeOut" } }}
+ transition={{ type: "spring", stiffness: 500, damping: 32 }}
+ style={{ transformOrigin: "top right" }}
+ className="absolute right-0 top-full mt-1.5 w-40 p-1.5 bg-white/95 backdrop-blur-xl border border-black/[0.07] rounded-xl shadow-[0_20px_40px_-16px_rgba(16,16,32,0.3)] z-10"
+ >
  <Link
  href={`/forms/${form.id}`}
- className="block px-3 py-2 text-sm text-foreground hover:bg-accent rounded-t-lg"
+ className="block px-3 py-2 text-sm text-foreground rounded-lg hover:bg-black/[0.05]"
  onClick={() => setOpenMenu(null)}
  >
  Edit
  </Link>
  <button
- className="block w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent"
+ className="block w-full text-left px-3 py-2 text-sm text-foreground rounded-lg hover:bg-black/[0.05]"
  onClick={() => handleDuplicate(form)}
  >
  Duplicate
  </button>
  <button
- className="block w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent"
+ className="block w-full text-left px-3 py-2 text-sm text-foreground rounded-lg hover:bg-black/[0.05]"
  onClick={() => handleTogglePublish(form)}
  >
  {form.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
  </button>
+ <div className="my-1 h-px bg-black/[0.06]" />
  <button
- className="block w-full text-left px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-b-lg"
+ className="block w-full text-left px-3 py-2 text-sm text-destructive rounded-lg hover:bg-destructive/10"
  onClick={() => handleDelete(form.id, form.title)}
  >
  Delete
  </button>
- </div>
+ </motion.div>
  )}
+ </AnimatePresence>
  </div>
- </div>
-
- <div className="flex items-center gap-3 mb-4">
- <Badge variant={status.color as "default" | "secondary" | "success" | "warning" | "danger" | "outline"}>
- <status.icon className="w-3 h-3 mr-1" />
- {status.label}
- </Badge>
  </div>
 
  <div className="flex items-center justify-between text-sm text-muted-foreground">
- <div className="flex items-center gap-1">
+ <div className="flex items-center gap-1.5">
  <BarChart3 className="w-4 h-4" />
- <span>{(form as any)._count?.responses || 0} responses</span>
+ <span>
+ <span className="font-semibold text-foreground tabular-nums">{responseCount}</span> responses
+ </span>
  </div>
- <div className="flex items-center gap-1">
+ <div className="flex items-center gap-1.5">
  <Clock className="w-4 h-4" />
  <span>{new Date(form.updatedAt).toLocaleDateString()}</span>
  </div>
@@ -305,35 +486,45 @@ export default function FormsPage() {
  </div>
 
  {/* Actions */}
- <div className="flex border-t border-border divide-x divide-border">
+ <div className="flex border-t border-black/[0.06] divide-x divide-black/[0.06]">
  <Link href={`/forms/${form.id}`} className="flex-1">
- <button className="w-full py-2.5 text-sm text-muted-foreground hover:text-primary hover:bg-accent transition-colors flex items-center justify-center gap-1.5">
- <Edit3 className="w-4 h-4" />
+ <button className="group/btn w-full py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-black/[0.03] transition-colors flex items-center justify-center gap-1.5 rounded-bl-2xl">
+ <Edit3 className="w-4 h-4 transition-transform duration-300 group-hover/btn:-rotate-12 group-hover/btn:text-violet" />
  Edit
  </button>
  </Link>
  <Link href={`/forms/${form.id}/responses`} className="flex-1">
- <button className="w-full py-2.5 text-sm text-muted-foreground hover:text-primary hover:bg-accent transition-colors flex items-center justify-center gap-1.5">
- <BarChart3 className="w-4 h-4" />
+ <button className="group/btn w-full py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-black/[0.03] transition-colors flex items-center justify-center gap-1.5">
+ <BarChart3 className="w-4 h-4 transition-transform duration-300 group-hover/btn:scale-110 group-hover/btn:text-pink" />
  Responses
  </button>
  </Link>
  <button
- className="flex-1 py-2.5 text-sm text-muted-foreground hover:text-primary hover:bg-accent transition-colors flex items-center justify-center gap-1.5"
+ className="group/btn flex-1 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-black/[0.03] transition-colors flex items-center justify-center gap-1.5 rounded-br-2xl"
  onClick={() => {
- const url = `${window.location.origin}/f/${form.id}`
+ // Public forms are served at /f/<slug>
+ const url = `${window.location.origin}/f/${form.slug || form.id}`
  navigator.clipboard.writeText(url)
  alert(`Form URL copied: ${url}`)
  }}
  >
- <Copy className="w-4 h-4" />
+ <Copy className="w-4 h-4 transition-transform duration-300 group-hover/btn:-translate-y-0.5 group-hover/btn:text-orange" />
  Copy
  </button>
  </div>
- </Card>
+ </motion.div>
  )
  })}
- </div>
+ </AnimatePresence>
+ </motion.div>
+ )}
+
+ {/* Tiny footer flourish */}
+ {forms.length > 0 && (
+ <p className="flex items-center justify-center gap-2 pt-2 text-xs text-muted-foreground/70">
+ <Sparkles className="w-3.5 h-3.5 text-violet/60" />
+ Tip: click a card&apos;s cover to jump straight into the editor
+ </p>
  )}
 
  {/* JSON Import Dialog */}

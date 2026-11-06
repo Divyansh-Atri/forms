@@ -1,10 +1,23 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const geist = Geist({
     subsets: ["latin"],
-    variable: "--font-inter",
+    variable: "--font-geist",
+});
+
+const geistMono = Geist_Mono({
+    subsets: ["latin"],
+    variable: "--font-geist-mono",
+});
+
+// Display accents (italic words in headings)
+const instrument = Instrument_Serif({
+    subsets: ["latin"],
+    weight: "400",
+    style: ["normal", "italic"],
+    variable: "--font-instrument",
 });
 
 export const metadata: Metadata = {
@@ -28,7 +41,7 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en" suppressHydrationWarning>
-            <body className={`${inter.variable} font-sans antialiased`}>
+            <body className={`${geist.variable} ${geistMono.variable} ${instrument.variable} font-sans antialiased`}>
                 {children}
                 <SpeedInsights />
             </body>

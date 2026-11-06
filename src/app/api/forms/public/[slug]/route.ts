@@ -18,6 +18,7 @@ export async function GET(
  description: true,
  slug: true,
  status: true,
+ layoutType: true,
  questions: true,
  theme: true,
  settings: true,

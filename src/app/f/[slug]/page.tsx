@@ -1,16 +1,15 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
-import Link from "next/link"
+import { useCallback, useEffect, useRef, useState, use } from "react"
+import type { InputHTMLAttributes } from "react"
+import { AnimatePresence, MotionConfig, motion, useAnimationControls, type Variants } from "framer-motion"
+import { ArrowLeft, ArrowRight, Check, ChevronDown, FileText, Loader2, Lock, UploadCloud, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
 import { SectionStepper } from "@/components/forms/section-stepper"
 import { TableForm } from "@/components/forms/table-form"
-import { FileText, CheckCircle, Loader2, Upload, ArrowRight, Clock, Users, ArrowLeft } from "lucide-react"
+import { ErrorToast, MadeWith, ProgressRail, SuccessScreen, type SectionQuestion } from "@/components/forms/respondent-kit"
+import { Aurora, Eyebrow, RevealText, trackSpotlight } from "@/components/fx"
+import { cn } from "@/lib/utils"
 
 interface FormQuestion {
  id: string
@@ -28,7 +27,7 @@ interface FormQuestion {
  columns?: string[]
 }
 
-interface FormData {
+interface PublicForm {
  id: string
  title: string
  description: string
@@ -40,7 +39,7 @@ interface FormData {
  title: string
  description?: string
  order: number
- questions: any[]
+ questions: SectionQuestion[]
  }>
  theme?: {
  primaryColor?: string
@@ -52,14 +51,44 @@ interface FormData {
  }
 }
 
+const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+// Picking one of these moves straight on to the next question
+const AUTO_ADVANCE_TYPES = new Set(["singleChoice", "linearScale", "nps"])
+
+function isAnswered(value: unknown) {
+ if (value === undefined || value === null || value === "") return false
+ if (Array.isArray(value)) return value.length > 0
+ return true
+}
+
+function scaleRange(question: FormQuestion) {
+ if (question.type === "nps") return { min: 0, max: 10 }
+ return { min: question.min || 1, max: question.max || 5 }
+}
+
+const slide: Variants = {
+ enter: (dir: number) => ({ opacity: 0, y: dir > 0 ? 56 : -56, scale: 0.98, filter: "blur(8px)" }),
+ center: {
+ opacity: 1, y: 0, scale: 1, filter: "blur(0px)",
+ transition: { type: "spring", stiffness: 150, damping: 21 },
+ },
+ exit: (dir: number) => ({
+ opacity: 0, y: dir > 0 ? -56 : 56, scale: 0.98, filter: "blur(8px)",
+ transition: { duration: 0.22, ease: [0.4, 0, 1, 1] },
+ }),
+}
+
 export default function PublicFormPage({ params }: { params: Promise<{ slug: string }> }) {
  const resolvedParams = use(params)
- const [form, setForm] = useState<FormData | null>(null)
+ const [form, setForm] = useState<PublicForm | null>(null)
  const [isLoading, setIsLoading] = useState(true)
  const [error, setError] = useState<string | null>(null)
  const [currentStep, setCurrentStep] = useState(0) // 0 = welcome, 1+ = questions, -1 = thank you
+ const [direction, setDirection] = useState(1)
  const [answers, setAnswers] = useState<Record<string, unknown>>({})
  const [isSubmitting, setIsSubmitting] = useState(false)
+ const [submitError, setSubmitError] = useState<string | null>(null)
+ const [nudge, setNudge] = useState(0) // bumps when someone tries to skip a required question
 
  // Fetch form from API
  useEffect(() => {
@@ -85,43 +114,30 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
  }, [resolvedParams.slug])
 
  const totalQuestions = form?.questions.length || 0
+ const currentQuestion = form && currentStep > 0 ? form.questions[currentStep - 1] ?? null : null
 
  const updateAnswer = (questionId: string, value: unknown) => {
  setAnswers((prev) => ({ ...prev, [questionId]: value }))
  }
 
- const currentQuestion = form && currentStep > 0 ? form.questions[currentStep - 1] : null
-
  const canProceed = () => {
  if (currentStep === 0) return true
  if (!currentQuestion) return true
  if (!currentQuestion.required) return true
- const answer = answers[currentQuestion.id]
- return answer !== undefined && answer !== "" && answer !== null
+ return isAnswered(answers[currentQuestion.id])
  }
 
- const handleNext = () => {
- if (currentStep === 0) {
- setCurrentStep(1)
- } else if (currentStep <= totalQuestions) {
- if (currentStep === totalQuestions) {
- handleSubmit()
- } else {
- setCurrentStep(currentStep + 1)
- }
- }
+ const goTo = (step: number, dir: number) => {
+ setDirection(dir)
+ setCurrentStep(step)
  }
 
- const handlePrev = () => {
- if (currentStep > 0) {
- setCurrentStep(currentStep - 1)
- }
- }
-
- const handleSubmit = async () => {
- if (!form) return
+ // Returns whether the response was saved
+ const handleSubmit = async (): Promise<boolean> => {
+ if (!form) return false
 
  setIsSubmitting(true)
+ setSubmitError(null)
  try {
  const response = await fetch('/api/responses', {
  method: 'POST',
@@ -137,24 +153,121 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
  })
 
  const result = await response.json()
- if (result.success) {
- setCurrentStep(-1)
- } else {
- alert('Failed to submit response')
- }
+ if (result.success) return true
+ setSubmitError(result.error || 'Failed to submit response')
+ return false
  } catch {
- alert('Failed to submit response')
+ setSubmitError('Failed to submit response. Check your connection and try again.')
+ return false
  } finally {
  setIsSubmitting(false)
  }
  }
 
+ const handleNext = async () => {
+ if (isSubmitting) return
+ if (currentStep === 0) {
+ goTo(1, 1)
+ return
+ }
+ if (!canProceed()) {
+ setNudge((n) => n + 1)
+ return
+ }
+ if (currentStep === totalQuestions) {
+ if (await handleSubmit()) goTo(-1, 1)
+ } else if (currentStep > 0 && currentStep < totalQuestions) {
+ goTo(currentStep + 1, 1)
+ }
+ }
+
+ const handlePrev = () => {
+ if (currentStep > 1) goTo(currentStep - 1, -1)
+ }
+
+ const resetForm = () => {
+ setAnswers({})
+ goTo(0, -1)
+ }
+
+ // Keyboard: Enter continues, letters pick choices, digits pick scale values
+ const nextRef = useRef(handleNext)
+ const shortcutRef = useRef<(key: string) => void>(() => {})
+ const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+ const scheduleAdvance = () => {
+ if (currentStep >= totalQuestions) return // never auto-submit
+ if (advanceTimer.current) clearTimeout(advanceTimer.current)
+ advanceTimer.current = setTimeout(() => nextRef.current(), 420)
+ }
+
+ const pick = (question: FormQuestion, value: unknown) => {
+ if (question.type === "multipleChoice") {
+ const selected = (answers[question.id] as string[]) || []
+ const label = value as string
+ updateAnswer(question.id, selected.includes(label) ? selected.filter((v) => v !== label) : [...selected, label])
+ return
+ }
+ updateAnswer(question.id, value)
+ if (AUTO_ADVANCE_TYPES.has(question.type)) scheduleAdvance()
+ }
+
+ useEffect(() => {
+ nextRef.current = handleNext
+ shortcutRef.current = (key: string) => {
+ const q = currentQuestion
+ if (!q) return
+ if (q.type === "singleChoice" || q.type === "multipleChoice") {
+ const idx = key.length === 1 ? LETTERS.indexOf(key.toUpperCase()) : -1
+ const choice = idx >= 0 ? q.choices?.[idx] : undefined
+ if (choice) pick(q, choice.label)
+ } else if (q.type === "linearScale" || q.type === "nps") {
+ if (!/^[0-9]$/.test(key)) return
+ const n = Number(key)
+ const { min, max } = scaleRange(q)
+ if (n >= min && n <= max) pick(q, n)
+ }
+ }
+ })
+
+ useEffect(() => {
+ const onKey = (e: KeyboardEvent) => {
+ if (e.defaultPrevented || e.altKey) return
+ const target = e.target as HTMLElement | null
+ const tag = target?.tagName
+ if (e.key === "Enter") {
+ if (tag === "TEXTAREA" && !(e.metaKey || e.ctrlKey)) return
+ // Real buttons keep their own Enter; choice tiles continue instead
+ if ((tag === "BUTTON" || tag === "A") && !target?.dataset.choice) return
+ e.preventDefault()
+ nextRef.current()
+ return
+ }
+ const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable
+ if (typing || e.metaKey || e.ctrlKey) return
+ shortcutRef.current(e.key)
+ }
+ window.addEventListener("keydown", onKey)
+ return () => {
+ window.removeEventListener("keydown", onKey)
+ if (advanceTimer.current) clearTimeout(advanceTimer.current)
+ }
+ }, [])
+
+ const clearSubmitError = useCallback(() => setSubmitError(null), [])
+
  if (isLoading) {
  return (
- <div className="min-h-screen flex items-center justify-center bg-background">
- <div className="flex flex-col items-center gap-4">
- <Loader2 className="w-10 h-10 animate-spin text-primary" />
- <p className="text-muted-foreground font-medium animate-pulse">Loading amazing form...</p>
+ <div className="relative grid min-h-[100svh] place-items-center">
+ <Aurora />
+ <div className="relative z-10 flex flex-col items-center gap-5">
+ <div className="relative h-14 w-14">
+ <div className="absolute inset-0 animate-pulse rounded-2xl bg-brand opacity-60 blur-xl" />
+ <div className="relative grid h-full w-full place-items-center rounded-2xl bg-primary">
+ <Loader2 className="h-6 w-6 animate-spin text-white" />
+ </div>
+ </div>
+ <p className="text-sm text-muted-foreground">Loading form…</p>
  </div>
  </div>
  )
@@ -162,34 +275,38 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
 
  if (error || !form) {
  return (
- <div className="min-h-screen flex items-center justify-center bg-background p-6">
- <Card className="p-10 text-center max-w-md shadow-premium border-none">
- <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-destructive/10 flex items-center justify-center">
- <FileText className="w-8 h-8 text-destructive" />
+ <div className="relative grid min-h-[100svh] place-items-center px-4">
+ <Aurora />
+ <motion.div
+ initial={{ opacity: 0, y: 20, filter: "blur(8px)" }}
+ animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+ className="relative z-10 max-w-md text-center"
+ >
+ <div className="mx-auto mb-7 grid h-16 w-16 place-items-center rounded-2xl bg-white shadow-premium-lg">
+ <Lock className="h-7 w-7 text-foreground" />
  </div>
- <h2 className="text-2xl font-bold mb-3 text-foreground">Form Not Found</h2>
- <p className="text-muted-foreground leading-relaxed">{error || 'This form does not exist or is no longer accepting responses.'}</p>
- <Button className="mt-8 shadow-sm" onClick={() => window.location.href = '/'}>
- Back to Home
+ <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">This form isn&apos;t available</h1>
+ <p className="mt-3 text-muted-foreground">{error || 'This form does not exist or is no longer accepting responses.'}</p>
+ <Button variant="outline" size="lg" className="mt-8" onClick={() => window.location.href = '/'}>
+ <ArrowLeft className="h-4 w-4" /> Back to home
  </Button>
- </Card>
+ </motion.div>
  </div>
  )
  }
 
+ const hasSections = !!form.formSections && form.formSections.length > 0
+
  return (
- <div className="min-h-screen bg-background selection:bg-primary/10 transition-colors duration-500">
- {/* Background Decor */}
- <div className="fixed inset-0 overflow-hidden pointer-events-none">
- <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px] animate-pulse" />
- <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-400/5 rounded-full blur-[120px] animate-pulse" />
- </div>
+ <MotionConfig reducedMotion="user">
+ <div className="relative min-h-[100svh] overflow-x-hidden">
+ <Aurora />
+ <ErrorToast message={submitError} onClose={clearSubmitError} />
 
- <div className="relative z-10 flex flex-col min-h-screen">
- {/* Check if form uses table layout */}
- {form.layoutType === 'table' && form.formSections && form.formSections.length > 0 ? (
+ <div className="relative z-10">
+ {form.layoutType === 'table' && hasSections ? (
  <TableForm
- sections={form.formSections}
+ sections={form.formSections!}
  formTitle={form.title}
  formDescription={form.description}
  responseData={answers}
@@ -197,10 +314,9 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
  onSubmit={handleSubmit}
  isSubmitting={isSubmitting}
  />
- ) : form.formSections && form.formSections.length > 0 ? (
- <div className="max-w-2xl mx-auto flex-1 flex flex-col py-12 px-4 w-full">
+ ) : hasSections ? (
  <SectionStepper
- sections={form.formSections}
+ sections={form.formSections!}
  formTitle={form.title}
  formDescription={form.description}
  responseData={answers}
@@ -208,348 +324,463 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
  onSubmit={handleSubmit}
  isSubmitting={isSubmitting}
  />
- </div>
  ) : (
- <div className="max-w-2xl mx-auto flex-1 flex flex-col py-12 px-4 w-full">
- <div className="flex-1 flex flex-col">
- {/* Progress Bar */}
- {currentStep > 0 && currentStep <= totalQuestions && (
- <div className="mb-10 w-full animate-fade-in">
- <div className="flex items-center justify-between text-sm font-bold mb-3">
- <span className="text-muted-foreground flex items-center gap-2">
- Question <span className="text-primary bg-primary/10 px-2 py-0.5 rounded text-xs">{currentStep}</span> <span className="opacity-30">/</span> {totalQuestions}
- </span>
- <span className="text-primary">{Math.round((currentStep / totalQuestions) * 100)}%</span>
- </div>
- <div className="h-2 bg-gray-200/50 rounded-full overflow-hidden shadow-inner">
- <div
- className="h-full bg-gradient-to-r from-primary via-blue-500 to-indigo-500 transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) shadow-[0_0_10px_rgba(59,130,246,0.5)]"
- style={{ width: `${(currentStep / totalQuestions) * 100}%` }}
- />
- </div>
- </div>
- )}
+ <div className="flex min-h-[100svh] flex-col">
+ {currentStep > 0 && <ProgressRail value={currentStep / totalQuestions} />}
 
- {/* Content Area */}
- <div className="flex-1 flex items-center justify-center">
- {/* Welcome Screen */}
+ <header className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between gap-4 px-4 sm:px-8">
+ <div className="flex min-w-0 items-center gap-2.5">
+ <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-primary shadow-premium">
+ <FileText className="h-4 w-4 text-white" />
+ </span>
+ <AnimatePresence>
+ {currentStep !== 0 && (
+ <motion.span
+ initial={{ opacity: 0, x: -8 }}
+ animate={{ opacity: 1, x: 0 }}
+ exit={{ opacity: 0, x: -8 }}
+ className="truncate text-sm font-medium text-foreground/80"
+ >
+ {form.title}
+ </motion.span>
+ )}
+ </AnimatePresence>
+ </div>
+ {currentStep > 0 && <StepCounter current={currentStep} total={totalQuestions} />}
+ </header>
+
+ <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-4 pb-10 pt-24 sm:px-6">
+ <AnimatePresence mode="wait" custom={direction} initial={false}>
  {currentStep === 0 && (
- <Card className="w-full p-10 animate-scale-in border-none shadow-premium-lg bg-white/80 backdrop-blur-2xl ring-1 ring-black/5 overflow-hidden relative">
- <div className="absolute top-0 left-0 w-2 h-full bg-primary" />
- <div className="text-center">
- <div className="w-24 h-24 mx-auto mb-8 rounded-[2.5rem] bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-xl shadow-primary/20 transform hover:rotate-6 transition-transform duration-500">
- <FileText className="w-12 h-12 text-white" />
- </div>
- <h1 className="text-4xl sm:text-5xl font-extrabold mb-6 tracking-tight text-foreground bg-gradient-to-b from-foreground to-foreground/70 bg-clip-text text-transparent">{form.title}</h1>
- {form.description && (
- <p className="text-xl text-muted-foreground mb-12 leading-relaxed font-medium max-w-lg mx-auto">{form.description}</p>
- )}
-					<div className="flex flex-col items-center gap-6">
-						<Button size="xl" onClick={handleNext} className="h-16 px-12 text-xl shadow-premium hover:shadow-premium-lg group rounded-2xl">
-							Start
-						</Button>
-						<div className="flex items-center justify-center gap-4 text-sm text-muted-foreground font-semibold tracking-wide">
-							<div className="flex items-center gap-2">
-								<Users className="w-4 h-4 text-primary" /> Anonymous
-							</div>
-						</div>
-					</div>
- </div>
- </Card>
+ <motion.section key="welcome" custom={direction} variants={slide} initial="enter" animate="center" exit="exit">
+ <WelcomeScreen form={form} total={totalQuestions} onStart={handleNext} />
+ </motion.section>
  )}
 
- {/* Question Step */}
- {currentStep > 0 && currentStep <= totalQuestions && currentQuestion && (
- <Card className="w-full p-10 animate-slide-up border-none shadow-premium-lg bg-white/80 backdrop-blur-2xl ring-1 ring-black/5 relative overflow-hidden">
- <div className="absolute top-0 left-0 w-full h-1.5 bg-gray-100">
- <div
- className="h-full bg-primary transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1)"
- style={{ width: `${(currentStep / totalQuestions) * 100}%` }}
- />
- </div>
- <div className="mb-10 pt-4">
- <div className="flex items-center gap-3 mb-4">
- <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary text-sm font-black">
- {currentStep}
- </span>
- <div className="h-[1px] flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
- </div>
- <h2 className="text-3xl sm:text-4xl font-extrabold mb-4 tracking-tight text-foreground leading-tight">
- {currentQuestion.title}
- {currentQuestion.required && <span className="text-primary ml-2 animate-pulse">*</span>}
- </h2>
- {currentQuestion.description && (
- <p className="text-xl text-muted-foreground/80 font-medium leading-relaxed">{currentQuestion.description}</p>
- )}
- </div>
-
- <div className="mb-12">
- <QuestionInput
+ {currentQuestion && (
+ <motion.section key={currentQuestion.id} custom={direction} variants={slide} initial="enter" animate="center" exit="exit">
+ <QuestionCard
  question={currentQuestion}
+ index={currentStep}
+ total={totalQuestions}
  value={answers[currentQuestion.id]}
  onChange={(value) => updateAnswer(currentQuestion.id, value)}
+ onPick={(value) => pick(currentQuestion, value)}
+ onNext={handleNext}
+ onPrev={handlePrev}
+ canProceed={canProceed()}
+ isSubmitting={isSubmitting}
+ nudge={nudge}
  />
- </div>
-
- <div className="flex items-center justify-between pt-8 border-t border-gray-100/50">
- <Button
- variant="ghost"
- onClick={handlePrev}
- disabled={currentStep === 1}
- className="h-14 px-8 font-bold text-muted-foreground hover:text-foreground hover:bg-gray-100/50 rounded-xl"
- >
- <ArrowLeft className="w-5 h-5 mr-2" /> Previous
- </Button>
- <Button
- onClick={handleNext}
- disabled={!canProceed()}
- loading={isSubmitting}
- size="xl"
- className="h-14 px-10 font-bold shadow-premium hover:shadow-premium-lg rounded-xl group"
- >
- {currentStep === totalQuestions ? "Submit Response" : "Next Step"}
- {currentStep !== totalQuestions && <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />}
- </Button>
- </div>
- </Card>
+ </motion.section>
  )}
 
- {/* Thank You Screen */}
  {currentStep === -1 && (
- <Card className="w-full p-12 text-center animate-scale-in border-none shadow-premium-lg bg-white/80 backdrop-blur-2xl ring-1 ring-black/5 overflow-hidden">
- <div className="w-28 h-28 mx-auto mb-10 rounded-[3rem] bg-emerald-50 flex items-center justify-center shadow-inner group overflow-hidden">
- <CheckCircle className="w-14 h-14 text-emerald-500 group-hover:scale-125 transition-transform duration-500" />
- </div>
- <h1 className="text-5xl font-black mb-6 tracking-tight text-foreground">Done & Dusted!</h1>
- <p className="text-2xl text-muted-foreground mb-12 font-medium leading-relaxed max-w-md mx-auto">
- Your response has been flying safely to our servers. Thank you for your time!
- </p>
- <div className="flex flex-col items-center gap-4">
- <Button size="xl" className="h-14 px-12 font-bold shadow-premium hover:shadow-premium-lg rounded-2xl group" onClick={() => {
- setCurrentStep(0)
- setAnswers({})
- }}>
- Submit Another <ArrowRight className="w-5 h-5 ml-2 group-hover:rotate-[-45deg] transition-transform" />
- </Button>
- </div>
- </Card>
+ <motion.section key="done" custom={direction} variants={slide} initial="enter" animate="center" exit="exit">
+ <SuccessScreen onReset={resetForm} />
+ </motion.section>
  )}
- </div>
+ </AnimatePresence>
+ </main>
 
- {/* Refined Footer */}
- <div className="mt-16 py-8 text-center animate-fade-in border-t border-gray-100/30">
- <Link href="/" className="inline-flex items-center gap-3 group opacity-70 hover:opacity-100 transition-opacity">
- <span className="text-sm font-bold text-muted-foreground group-hover:text-primary transition-colors tracking-tight uppercase">Created with</span>
-					<div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white shadow-premium border border-border/5 group-hover:border-primary/20 transition-all group-hover:shadow-premium-lg group-hover:-translate-y-1">
- <div className="w-6 h-6 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center shadow-sm">
- <FileText className="w-3.5 h-3.5 text-white" />
- </div>
-						<span className="text-sm font-black text-foreground tracking-tighter">sanjeevatri</span>
- </div>
- </Link>
-				<p className="mt-6 text-[10px] text-muted-foreground/50 font-bold uppercase tracking-[0.2em]">Secure • Anonymous • Powered by sanjeevatri</p>
- </div>
- </div>
+ <footer className="flex items-center justify-between gap-4 px-4 pb-6 sm:px-8">
+ <MadeWith />
+ {currentStep > 0 && (
+ <span className="hidden items-center gap-2 text-xs text-muted-foreground sm:inline-flex">
+ <span className="kbd">↵</span> to continue
+ <span className="mx-1 text-border">|</span>
+ <span className="kbd">A</span> – <span className="kbd">Z</span> to choose
+ </span>
+ )}
+ </footer>
  </div>
  )}
  </div>
+ </div>
+ </MotionConfig>
+ )
+}
+
+function StepCounter({ current, total }: { current: number; total: number }) {
+ return (
+ <div className="flex items-center gap-1.5 overflow-hidden rounded-full border border-border bg-white/80 px-3 py-1 font-mono text-xs font-medium tabular-nums backdrop-blur">
+ <AnimatePresence mode="popLayout" initial={false}>
+ <motion.span
+ key={current}
+ initial={{ y: 12, opacity: 0 }}
+ animate={{ y: 0, opacity: 1 }}
+ exit={{ y: -12, opacity: 0 }}
+ transition={{ type: "spring", stiffness: 300, damping: 24 }}
+ >
+ {String(current).padStart(2, "0")}
+ </motion.span>
+ </AnimatePresence>
+ <span className="text-muted-foreground">/ {String(total).padStart(2, "0")}</span>
  </div>
  )
 }
 
-// Question input component with premium styling
+function WelcomeScreen({ form, total, onStart }: { form: PublicForm; total: number; onStart: () => void }) {
+ return (
+ <div className="relative text-center">
+ {/* Slowly turning colour halo behind the title */}
+ <div
+ aria-hidden
+ className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[30rem] w-[30rem] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.16] blur-3xl sm:h-[38rem] sm:w-[38rem]"
+ style={{
+ background: "conic-gradient(from 0deg, #7c3aed, #ec4899, #f97316, #06b6d4, #7c3aed)",
+ animation: "spin 18s linear infinite",
+ }}
+ />
+ <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+ <Eyebrow>
+ {total} question{total === 1 ? "" : "s"} · Anonymous
+ </Eyebrow>
+ </motion.div>
+ <RevealText
+ as="h1"
+ text={form.title}
+ delay={0.15}
+ className="mt-8 text-balance text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.045em] sm:text-7xl"
+ />
+ {form.description && (
+ <motion.p
+ initial={{ opacity: 0, y: 12, filter: "blur(6px)" }}
+ animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+ transition={{ delay: 0.45, duration: 0.7 }}
+ className="mx-auto mt-6 max-w-lg text-pretty text-lg text-muted-foreground sm:text-xl"
+ >
+ {form.description}
+ </motion.p>
+ )}
+ <motion.div
+ initial={{ opacity: 0, y: 14 }}
+ animate={{ opacity: 1, y: 0 }}
+ transition={{ delay: 0.65, type: "spring", stiffness: 160, damping: 20 }}
+ className="mt-11 flex flex-col items-center gap-4"
+ >
+ <Button size="xl" onClick={onStart} className="group px-10">
+ Let&apos;s begin
+ <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+ </Button>
+ <span className="hidden items-center gap-2 text-xs text-muted-foreground sm:inline-flex">
+ or press <span className="kbd">Enter ↵</span>
+ </span>
+ </motion.div>
+ </div>
+ )
+}
+
+function QuestionCard({
+ question,
+ index,
+ total,
+ value,
+ onChange,
+ onPick,
+ onNext,
+ onPrev,
+ canProceed,
+ isSubmitting,
+ nudge,
+}: {
+ question: FormQuestion
+ index: number
+ total: number
+ value: unknown
+ onChange: (value: unknown) => void
+ onPick: (value: unknown) => void
+ onNext: () => void
+ onPrev: () => void
+ canProceed: boolean
+ isSubmitting: boolean
+ nudge: number
+}) {
+ const controls = useAnimationControls()
+ const cardRef = useRef<HTMLDivElement>(null)
+ // Only react to skip attempts made while this question is on screen
+ const [nudgeAtMount] = useState(nudge)
+ const nudged = nudge > nudgeAtMount
+ const isLast = index === total
+
+ useEffect(() => {
+ if (nudge > nudgeAtMount) {
+ controls.start({ x: [0, -12, 11, -7, 6, -2, 0], transition: { duration: 0.45 } })
+ // Put the cursor back in the answer field so they can just type
+ cardRef.current?.querySelector<HTMLElement>("input:not([type=file]), textarea, select")?.focus()
+ }
+ }, [nudge, nudgeAtMount, controls])
+
+ return (
+ <motion.div animate={controls}>
+ <div
+ ref={cardRef}
+ onPointerMove={trackSpotlight}
+ className="glass spotlight rounded-[2rem] p-6 shadow-premium-lg sm:p-10"
+ >
+ <div className="mb-6 flex items-center gap-3">
+ <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 font-mono text-xs font-semibold text-white">
+ {String(index).padStart(2, "0")}
+ <ArrowRight className="h-3 w-3" />
+ </span>
+ <span className="text-sm text-muted-foreground">
+ Question {index} of {total}
+ </span>
+ </div>
+
+ <h2 className="text-balance text-[1.75rem] font-semibold leading-[1.15] tracking-[-0.035em] sm:text-[2.3rem]">
+ {question.title}
+ {question.required && <span className="ml-1.5 text-pink">*</span>}
+ </h2>
+ {question.description && (
+ <p className="mt-3 text-pretty text-base text-muted-foreground sm:text-lg">{question.description}</p>
+ )}
+
+ <div className="mt-8">
+ <QuestionInput question={question} value={value} onChange={onChange} onPick={onPick} />
+ </div>
+
+ <AnimatePresence>
+ {nudged && !canProceed && (
+ <motion.p
+ initial={{ opacity: 0, height: 0 }}
+ animate={{ opacity: 1, height: "auto" }}
+ exit={{ opacity: 0, height: 0 }}
+ className="overflow-hidden text-sm font-medium text-pink"
+ >
+ <span className="block pt-4">This one&apos;s required. Answer it to continue.</span>
+ </motion.p>
+ )}
+ </AnimatePresence>
+
+ <div className="mt-10 flex items-center justify-between gap-3">
+ {index > 1 ? (
+ <Button variant="ghost" onClick={onPrev} className="-ml-3 text-muted-foreground hover:text-foreground">
+ <ArrowLeft className="h-4 w-4" /> Back
+ </Button>
+ ) : (
+ <span />
+ )}
+ <div className="flex items-center gap-3">
+ <span className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:inline-flex">
+ press <span className="kbd">{question.type === "longText" ? "Ctrl ↵" : "Enter ↵"}</span>
+ </span>
+ <Button size="lg" onClick={onNext} loading={isSubmitting} className="group min-w-[8.5rem]">
+ {isLast ? (
+ <>
+ Submit <Check className="h-4 w-4" strokeWidth={2.5} />
+ </>
+ ) : (
+ <>
+ OK <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+ </>
+ )}
+ </Button>
+ </div>
+ </div>
+ </div>
+ </motion.div>
+ )
+}
+
+// Big, borderless input with a gradient line that sweeps in on focus
+function LineInput({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+ return (
+ <div className="relative">
+ <input
+ {...props}
+ className={cn(
+ "peer w-full rounded-none border-0 border-b-2 border-[#e6e6ec] bg-transparent px-0 pb-3 pt-1 text-2xl font-medium tracking-tight text-foreground placeholder:text-muted-foreground/40",
+ "hover:border-[#d4d4dc] focus:border-[#e6e6ec] focus:shadow-none focus-visible:outline-none sm:text-[1.75rem]",
+ className
+ )}
+ />
+ <span
+ aria-hidden
+ className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] origin-left scale-x-0 bg-brand transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] peer-focus:scale-x-100"
+ />
+ </div>
+ )
+}
+
+// Question input component
 function QuestionInput({
  question,
  value,
  onChange,
+ onPick,
 }: {
  question: FormQuestion
  value: unknown
  onChange: (value: unknown) => void
+ onPick: (value: unknown) => void
 }) {
  switch (question.type) {
  case "shortText":
  case "email":
  case "number":
  return (
- <div className="group relative">
- <Input
- type={question.type === "number" ? "number" : "text"}
+ <LineInput
+ type={question.type === "number" ? "number" : question.type === "email" ? "email" : "text"}
  value={(value as string) || ""}
  onChange={(e) => onChange(e.target.value)}
- placeholder="Type your brilliant answer..."
- className="text-2xl h-20 px-8 rounded-2xl border-2 border-gray-100 bg-white/50 focus:border-primary focus:ring-8 focus:ring-primary/5 transition-all shadow-sm group-hover:shadow-md"
+ placeholder={question.type === "email" ? "name@example.com" : "Type your answer here…"}
  autoFocus
  />
- <div className="absolute right-6 top-1/2 -translate-y-1/2 text-primary/30 group-focus-within:text-primary transition-colors">
- <ArrowRight className="w-6 h-6" />
- </div>
- </div>
  )
 
  case "longText":
  return (
- <Textarea
+ <div className="relative">
+ <textarea
  value={(value as string) || ""}
  onChange={(e) => onChange(e.target.value)}
- placeholder="Tell us everything..."
- rows={6}
- className="text-xl p-8 rounded-2xl border-2 border-gray-100 bg-white/50 focus:border-primary focus:ring-8 focus:ring-primary/5 transition-all shadow-sm hover:shadow-md resize-none"
+ placeholder="Type your answer here…"
+ rows={4}
  autoFocus
+ className="peer w-full resize-none rounded-none border-0 border-b-2 border-[#e6e6ec] bg-transparent px-0 pb-3 pt-1 text-xl font-medium leading-relaxed tracking-tight placeholder:text-muted-foreground/40 hover:border-[#d4d4dc] focus:border-[#e6e6ec] focus:shadow-none focus-visible:outline-none sm:text-2xl"
  />
+ <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-[7px] h-[2px] origin-left scale-x-0 bg-brand transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] peer-focus:scale-x-100" />
+ <p className="mt-3 text-xs text-muted-foreground">
+ <span className="kbd">Shift ↵</span> for a new line
+ </p>
+ </div>
  )
 
  case "singleChoice":
+ case "multipleChoice": {
+ const multiple = question.type === "multipleChoice"
+ const selected = multiple ? ((value as string[]) || []) : value ? [value as string] : []
  return (
- <RadioGroup
- value={(value as string) || ""}
- onValueChange={onChange}
- className="grid gap-4"
- >
- {question.choices?.map((choice) => (
- <div
+ <div>
+ {multiple && <p className="mb-3 text-sm text-muted-foreground">Choose as many as you like</p>}
+ <div role={multiple ? "group" : "radiogroup"} className="grid gap-2.5">
+ {question.choices?.map((choice, i) => {
+ const on = selected.includes(choice.label)
+ return (
+ <motion.button
  key={choice.id}
- className={`flex items-center p-6 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${value === choice.label
- ? "border-primary bg-primary/5 shadow-md shadow-primary/5 -translate-y-1 scale-[1.02]"
- : "border-gray-100 bg-white/50 hover:border-gray-200 hover:shadow-md hover:-translate-y-0.5"
- }`}
- onClick={() => onChange(choice.label)}
+ type="button"
+ data-choice="true"
+ role={multiple ? "checkbox" : "radio"}
+ aria-checked={on}
+ onClick={() => onPick(choice.label)}
+ initial={{ opacity: 0, x: -14 }}
+ animate={{ opacity: 1, x: 0, scale: on ? 1.015 : 1 }}
+ transition={{ delay: 0.08 + i * 0.045, type: "spring", stiffness: 260, damping: 22, scale: { type: "spring", stiffness: 420, damping: 20, delay: 0 } }}
+ whileTap={{ scale: 0.98 }}
+ className={cn(
+ "flex w-full items-center gap-3.5 rounded-2xl border px-4 py-3.5 text-left text-base transition-colors duration-200 sm:text-lg",
+ on
+ ? "border-transparent bg-primary text-white shadow-[0_16px_36px_-14px_rgba(124,58,237,0.7)]"
+ : "border-border bg-white/85 hover:border-foreground/20 hover:bg-white"
+ )}
  >
- <div className={`w-6 h-6 rounded-full border-2 mr-4 flex items-center justify-center transition-colors ${value === choice.label ? "border-primary bg-primary" : "border-gray-300"}`}>
- {value === choice.label && <div className="w-2 h-2 rounded-full bg-white" />}
- </div>
- <Label
- htmlFor={choice.id}
- className="flex-1 cursor-pointer text-xl font-bold text-foreground/80 group-hover:text-foreground"
+ <span className={cn("kbd shrink-0 transition-colors", on && "border-white/20 bg-white/10 text-white shadow-none")}>
+ {LETTERS[i]}
+ </span>
+ <span className="flex-1 font-medium">{choice.label}</span>
+ <AnimatePresence>
+ {on && (
+ <motion.span
+ initial={{ scale: 0, rotate: -60 }}
+ animate={{ scale: 1, rotate: 0 }}
+ exit={{ scale: 0 }}
+ transition={{ type: "spring", stiffness: 500, damping: 22 }}
+ className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand"
  >
- {choice.label}
- </Label>
- <RadioGroupItem value={choice.label} id={choice.id} className="sr-only" />
- </div>
- ))}
- </RadioGroup>
+ <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+ </motion.span>
+ )}
+ </AnimatePresence>
+ </motion.button>
  )
-
- case "multipleChoice":
- const selectedValues = (value as string[]) || []
- return (
- <div className="grid gap-4">
- {question.choices?.map((choice) => (
- <div
- key={choice.id}
- className={`flex items-center p-6 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${selectedValues.includes(choice.label)
- ? "border-primary bg-primary/5 shadow-md shadow-primary/5 -translate-y-1 scale-[1.02]"
- : "border-gray-100 bg-white/50 hover:border-gray-200 hover:shadow-md hover:-translate-y-0.5"
- }`}
- onClick={() => {
- const newValues = selectedValues.includes(choice.label)
- ? selectedValues.filter(v => v !== choice.label)
- : [...selectedValues, choice.label]
- onChange(newValues)
- }}
- >
- <div className={`w-6 h-6 rounded-lg border-2 mr-4 flex items-center justify-center transition-colors ${selectedValues.includes(choice.label) ? "border-primary bg-primary" : "border-gray-300"}`}>
- {selectedValues.includes(choice.label) && <CheckCircle className="w-4 h-4 text-white" />}
+ })}
  </div>
- <Label className="flex-1 cursor-pointer text-xl font-bold text-foreground/80">
- {choice.label}
- </Label>
- <input
- type="checkbox"
- checked={selectedValues.includes(choice.label)}
- onChange={() => { }}
- className="sr-only"
- />
- </div>
- ))}
  </div>
  )
+ }
 
  case "dropdown":
  return (
- <div className="relative group">
+ <div className="relative">
  <select
  value={(value as string) || ""}
  onChange={(e) => onChange(e.target.value)}
- className="w-full h-20 px-8 text-2xl appearance-none rounded-2xl border-2 border-gray-100 bg-white/50 focus:border-primary focus:ring-8 focus:ring-primary/5 transition-all shadow-sm group-hover:shadow-md cursor-pointer outline-none"
+ className="w-full cursor-pointer appearance-none rounded-2xl border-[1.5px] border-border bg-white/90 px-5 py-4 pr-12 text-lg font-medium focus-visible:outline-none"
  >
- <option value="" disabled className="text-gray-400">Pick one...</option>
+ <option value="" disabled>Pick one…</option>
  {question.choices?.map((choice) => (
  <option key={choice.id} value={choice.label}>
  {choice.label}
  </option>
  ))}
  </select>
- <div className="absolute right-8 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 group-hover:text-primary transition-colors">
- <ArrowRight className="w-6 h-6 rotate-90" />
- </div>
+ <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
  </div>
  )
 
  case "linearScale":
- const min = question.min || 1
- const scaleMax = question.max || 5
+ case "nps": {
+ const { min, max } = scaleRange(question)
+ const values = Array.from({ length: max - min + 1 }, (_, i) => min + i)
+ const many = values.length > 7
+ const lowLabel = question.type === "nps" ? "Not likely at all" : question.minLabel || "Low"
+ const highLabel = question.type === "nps" ? "Extremely likely" : question.maxLabel || "High"
  return (
- <div className="space-y-8">
- <div className="flex items-center justify-between gap-3">
- {Array.from({ length: scaleMax - min + 1 }, (_, i) => {
- const num = min + i
+ <div>
+ <div role="radiogroup" className={cn("gap-2", many ? "grid grid-cols-6 sm:grid-cols-11" : "flex")}>
+ {values.map((n, i) => {
+ const on = value === n
  return (
- <button
- key={num}
- onClick={() => onChange(num)}
- className={`flex-1 aspect-square sm:aspect-auto sm:h-20 rounded-2xl border-2 font-black text-2xl transition-all duration-300 ${value === num
- ? "border-primary bg-primary text-white shadow-lg shadow-primary/20 -translate-y-2 scale-110"
- : "border-gray-100 bg-white/50 text-foreground/40 hover:border-gray-200 hover:text-foreground/80 hover:-translate-y-1"
- }`}
+ <motion.button
+ key={n}
+ type="button"
+ data-choice="true"
+ role="radio"
+ aria-checked={on}
+ aria-label={String(n)}
+ onClick={() => onPick(n)}
+ initial={{ opacity: 0, y: 16 }}
+ animate={{ opacity: 1, y: on ? -5 : 0 }}
+ transition={{ delay: 0.08 + i * 0.03, type: "spring", stiffness: 300, damping: 20, y: { type: "spring", stiffness: 420, damping: 18, delay: 0 } }}
+ whileHover={{ y: -3 }}
+ whileTap={{ scale: 0.92 }}
+ className={cn(
+ "relative h-14 flex-1 rounded-2xl border text-lg font-semibold tabular-nums transition-colors sm:h-16",
+ on
+ ? "border-transparent bg-primary text-white shadow-[0_18px_32px_-12px_rgba(236,72,153,0.65)]"
+ : "border-border bg-white/85 text-foreground/70 hover:border-foreground/20 hover:text-foreground"
+ )}
  >
- {num}
- </button>
+ {n}
+ {on && (
+ <motion.span
+ layoutId={`scale-mark-${question.id}`}
+ className="absolute -bottom-2 left-1/2 h-1 w-6 -translate-x-1/2 rounded-full bg-brand"
+ />
+ )}
+ </motion.button>
  )
  })}
  </div>
- <div className="flex justify-between px-2">
- <span className="text-sm font-black uppercase tracking-widest text-muted-foreground">{question.minLabel || "Low"}</span>
- <span className="text-sm font-black uppercase tracking-widest text-muted-foreground">{question.maxLabel || "High"}</span>
+ <div className="mt-4 flex justify-between gap-4 text-xs text-muted-foreground sm:text-sm">
+ <span>{lowLabel}</span>
+ <span className="text-right">{highLabel}</span>
  </div>
  </div>
  )
-
- case "nps":
- return (
- <div className="space-y-8">
- <div className="flex items-center justify-between gap-1.5 overflow-x-auto pb-4 sm:pb-0">
- {Array.from({ length: 11 }, (_, i) => (
- <button
- key={i}
- onClick={() => onChange(i)}
- className={`flex-1 min-w-[40px] h-16 sm:h-20 rounded-xl border-2 font-black text-xl transition-all duration-300 ${value === i
- ? "border-primary bg-primary text-white shadow-lg shadow-primary/20 -translate-y-2 scale-110"
- : "border-gray-100 bg-white/50 text-foreground/40 hover:border-gray-200 hover:text-foreground/80 hover:-translate-y-1"
- }`}
- >
- {i}
- </button>
- ))}
- </div>
- <div className="flex justify-between px-2 font-black uppercase tracking-widest text-xs text-muted-foreground">
- <span>Not likely at all</span>
- <span>Extremely likely</span>
- </div>
- </div>
- )
+ }
 
  case "date":
  return (
- <div className="group relative">
- <Input
+ <LineInput
  type="date"
  value={(value as string) || ""}
  onChange={(e) => onChange(e.target.value)}
- className="text-2xl h-20 px-8 rounded-2xl border-2 border-gray-100 bg-white/50 focus:border-primary focus:ring-8 focus:ring-primary/5 transition-all shadow-sm group-hover:shadow-md"
  autoFocus
+ className="max-w-xs"
  />
- </div>
  )
 
  case "fileUpload":
@@ -563,17 +794,16 @@ function QuestionInput({
 
  default:
  return (
- <Input
+ <LineInput
  value={(value as string) || ""}
  onChange={(e) => onChange(e.target.value)}
- placeholder="Type your answer here..."
- className="text-2xl h-20 px-8 rounded-2xl border-2 border-gray-100 bg-white/50 focus:border-primary focus:ring-8 focus:ring-primary/5 transition-all"
+ placeholder="Type your answer here…"
  />
  )
  }
 }
 
-// File Upload Input Component - Premium Version
+// File upload: click or drag a file in; it goes to /api/upload (Vercel Blob)
 function FileUploadInput({
  question,
  value,
@@ -585,9 +815,11 @@ function FileUploadInput({
 }) {
  const [isUploading, setIsUploading] = useState(false)
  const [uploadError, setUploadError] = useState<string | null>(null)
+ const [isDragging, setIsDragging] = useState(false)
+ const inputRef = useRef<HTMLInputElement>(null)
+ const maxSizeMB = question.max || 5
 
  const handleFileUpload = async (file: File) => {
- const maxSizeMB = question.max || 5
  const maxSize = maxSizeMB * 1024 * 1024
 
  if (file.size > maxSize) {
@@ -628,83 +860,113 @@ function FileUploadInput({
  }
 
  return (
- <div className="space-y-4">
+ <div className="space-y-3">
+ <AnimatePresence>
  {uploadError && (
- <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive font-bold text-sm animate-shake">
+ <motion.div
+ initial={{ opacity: 0, y: -6 }}
+ animate={{ opacity: 1, y: 0 }}
+ exit={{ opacity: 0 }}
+ className="animate-shake rounded-2xl border border-destructive/15 bg-destructive/5 px-4 py-3 text-sm font-medium text-destructive"
+ >
  {uploadError}
- </div>
+ </motion.div>
  )}
+ </AnimatePresence>
+
  {!value ? (
  <div
- className={`border-3 border-dashed rounded-[2.5rem] p-12 text-center transition-all cursor-pointer group relative overflow-hidden ${isUploading
- ? 'border-primary bg-primary/5'
- : 'border-gray-200 bg-white/30 hover:border-primary hover:bg-primary/5'
- }`}
- onClick={() => !isUploading && document.getElementById(`file-${question.id}`)?.click()}
+ role="button"
+ tabIndex={0}
+ aria-label="Upload a file"
+ onClick={() => !isUploading && inputRef.current?.click()}
+ onKeyDown={(e) => {
+ if (e.key === " ") {
+ e.preventDefault()
+ if (!isUploading) inputRef.current?.click()
+ }
+ }}
+ onDragOver={(e) => {
+ e.preventDefault()
+ setIsDragging(true)
+ }}
+ onDragLeave={() => setIsDragging(false)}
+ onDrop={(e) => {
+ e.preventDefault()
+ setIsDragging(false)
+ const file = e.dataTransfer.files?.[0]
+ if (file && !isUploading) handleFileUpload(file)
+ }}
+ className={cn(
+ "group relative cursor-pointer overflow-hidden rounded-3xl border-2 border-dashed px-6 py-10 text-center transition-all duration-300 sm:py-12",
+ isDragging
+ ? "scale-[1.01] border-violet/60 bg-violet/5"
+ : "border-[#e2e2ea] bg-white/70 hover:border-foreground/25 hover:bg-white"
+ )}
  >
  <input
- id={`file-${question.id}`}
+ ref={inputRef}
  type="file"
  className="hidden"
  disabled={isUploading}
  onChange={(e) => {
  const file = e.target.files?.[0]
  if (file) handleFileUpload(file)
+ e.target.value = ""
  }}
  />
  {isUploading ? (
- <>
- <div className="relative w-20 h-20 mx-auto mb-6">
- <Loader2 className="w-20 h-20 text-primary animate-spin" />
- <div className="absolute inset-0 flex items-center justify-center font-black text-xs text-primary">
- UP...
+ <div className="flex flex-col items-center">
+ <p className="text-lg font-semibold">Uploading…</p>
+ <div className="mt-5 h-1.5 w-48 overflow-hidden rounded-full bg-muted">
+ <motion.div
+ className="h-full w-1/2 rounded-full bg-brand"
+ animate={{ x: ["-100%", "200%"] }}
+ transition={{ repeat: Infinity, duration: 1.1, ease: "easeInOut" }}
+ />
  </div>
  </div>
- <p className="text-2xl font-black text-primary animate-pulse">
- Uploading Magic...
- </p>
- </>
  ) : (
  <>
- <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gray-100 group-hover:bg-primary group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 flex items-center justify-center">
- <Upload className="w-10 h-10 text-muted-foreground group-hover:text-white transition-colors" />
- </div>
- <p className="text-2xl text-foreground font-black mb-2">
- Drop your masterpiece here
+ <motion.div
+ animate={isDragging ? { y: -6, scale: 1.08 } : { y: 0, scale: 1 }}
+ className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-2xl bg-primary shadow-[0_16px_34px_-14px_rgba(124,58,237,0.7)] transition-transform duration-500 group-hover:-rotate-6"
+ >
+ <UploadCloud className="h-7 w-7 text-white" />
+ </motion.div>
+ <p className="text-lg font-semibold">
+ {isDragging ? "Drop it!" : <>Drop a file here or <span className="underline decoration-violet/40 underline-offset-4">browse</span></>}
  </p>
- <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
- Max {question.max || 5}MB • PDF, JPG, PNG
- </p>
+ <p className="mt-1.5 text-sm text-muted-foreground">Up to {maxSizeMB} MB</p>
  </>
  )}
  </div>
  ) : (
- <div className="flex items-center justify-between p-6 rounded-[2rem] border-2 border-emerald-100 bg-emerald-50/50 shadow-sm animate-scale-in">
- <div className="flex items-center gap-6">
- <div className="w-16 h-16 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-200">
- <CheckCircle className="w-8 h-8 text-white" />
- </div>
- <div className="flex flex-col">
- <span className="text-xl font-bold truncate max-w-[250px] text-foreground">
- {value.name}
+ <motion.div
+ initial={{ opacity: 0, scale: 0.96 }}
+ animate={{ opacity: 1, scale: 1 }}
+ className="flex items-center gap-4 rounded-2xl border border-border bg-white p-4 shadow-premium"
+ >
+ <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand">
+ <Check className="h-6 w-6 text-white" strokeWidth={3} />
  </span>
- <span className="text-sm font-bold text-emerald-600/70 uppercase tracking-tighter">
- {(value.size / 1024 / 1024).toFixed(2)} MB • SECURELY UPLOADED
- </span>
- </div>
+ <div className="min-w-0 flex-1">
+ <p className="truncate font-semibold">{value.name}</p>
+ <p className="text-sm text-muted-foreground">{(value.size / 1024 / 1024).toFixed(2)} MB · uploaded</p>
  </div>
  <Button
  variant="ghost"
- size="sm"
+ size="icon"
+ aria-label="Remove file"
  onClick={(e) => {
  e.stopPropagation()
  onChange(null)
  }}
- className="text-destructive hover:bg-destructive/10 rounded-xl font-bold"
+ className="text-muted-foreground hover:text-destructive"
  >
- Remove
+ <X className="h-4 w-4" />
  </Button>
- </div>
+ </motion.div>
  )}
  </div>
  )

@@ -4,31 +4,31 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
- "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/12 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed",
+ "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium transition-all duration-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/15 disabled:pointer-events-none disabled:opacity-45 disabled:cursor-not-allowed",
  {
  variants: {
  variant: {
  default:
- "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm [&>svg]:text-white [&]:text-white",
+ "btn-ink [&>svg]:text-white",
  destructive:
- "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 [&>svg]:text-white [&]:text-white",
+ "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 hover:-translate-y-0.5 active:translate-y-0 [&>svg]:text-white",
  outline:
- "border-2 border-primary bg-white text-primary hover:bg-primary/8 hover:border-primary/80 hover:shadow-sm",
+ "border border-border bg-white text-foreground shadow-[0_1px_2px_rgba(16,16,32,0.04)] hover:border-foreground/25 hover:-translate-y-0.5 hover:shadow-premium active:translate-y-0",
  secondary:
- "bg-secondary text-secondary-foreground hover:bg-secondary/70 hover:shadow-sm",
+ "bg-secondary text-secondary-foreground hover:bg-[#ebebf0]",
  ghost:
- "text-foreground hover:bg-accent hover:text-accent-foreground",
+ "text-foreground hover:bg-muted",
  link:
- "text-primary underline-offset-4 hover:underline hover:text-primary/80",
+ "text-foreground underline-offset-4 hover:underline decoration-violet/50",
  success:
- "bg-success text-success-foreground shadow-sm hover:bg-success/90 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 [&>svg]:text-white [&]:text-white",
+ "bg-success text-success-foreground shadow-sm hover:bg-success/90 hover:-translate-y-0.5 active:translate-y-0 [&>svg]:text-white",
  },
 
  size: {
- default: "h-10 px-5 py-2.5",
- sm: "h-9 rounded-md px-3.5 text-xs",
- lg: "h-12 rounded-lg px-8 text-base",
- xl: "h-14 rounded-xl px-10 text-lg",
+ default: "h-10 px-5",
+ sm: "h-9 px-3.5 text-xs",
+ lg: "h-12 px-7 text-[0.95rem]",
+ xl: "h-14 px-9 text-base",
  icon: "h-10 w-10",
  },
  },

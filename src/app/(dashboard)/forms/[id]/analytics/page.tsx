@@ -126,8 +126,8 @@ export default function AnalyticsPage() {
  <Card>
  <CardContent className="pt-6">
  <div className="flex items-center gap-4">
- <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
- <Users className="w-6 h-6 text-blue-600" />
+ <div className="w-12 h-12 rounded-xl bg-violet/10 flex items-center justify-center">
+ <Users className="w-6 h-6 text-violet" />
  </div>
  <div>
  <p className="text-2xl font-bold">{analytics.totalResponses}</p>
@@ -178,7 +178,7 @@ export default function AnalyticsPage() {
  {responsesByDay.map((day, i) => (
  <div key={i} className="flex-1 flex flex-col items-center gap-2">
  <div
- className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-lg transition-all hover:from-blue-600 hover:to-blue-500"
+ className="w-full bg-gradient-to-t from-violet to-pink rounded-t-lg transition-all hover:from-violet hover:to-orange"
  style={{ height: `${(day.count / 35) * 100}%` }}
  />
  <span className="text-xs text-muted-foreground">{day.date}</span>
@@ -207,7 +207,7 @@ export default function AnalyticsPage() {
  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
  <div
  className={`h-full rounded-full ${i === 0
- ? "bg-blue-500"
+ ? "bg-violet"
  : i === 1
  ? "bg-purple-500"
  : "bg-orange-500"

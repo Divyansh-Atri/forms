@@ -9,7 +9,8 @@ export interface InputProps
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
  ({ className, type, error, label, id, ...props }, ref) => {
- const inputId = id || React.useId()
+ const generatedId = React.useId()
+ const inputId = id || generatedId
 
  return (
  <div className="w-full">
@@ -25,13 +26,13 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
  type={type}
  id={inputId}
  className={cn(
- "flex h-12 w-full rounded-lg border-[1.5px] bg-white px-4 py-3 text-[0.9375rem] transition-all duration-200",
+ "flex h-12 w-full rounded-xl border-[1.5px] bg-white/90 px-4 py-3 text-[0.9375rem] transition-all duration-200",
  "placeholder:text-muted-foreground placeholder:opacity-70",
- "focus-visible:outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 focus-visible:-translate-y-0.5",
+ "focus-visible:outline-none focus-visible:border-violet/60 focus-visible:ring-4 focus-visible:ring-violet/10 focus-visible:shadow-[0_10px_30px_-14px_rgba(124,58,237,0.45)]",
  "disabled:cursor-not-allowed disabled:opacity-60 disabled:bg-muted",
  error
  ? "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/10"
- : "border-border hover:border-gray-400",
+ : "border-border hover:border-[#d4d4dc]",
  className
  )}
  ref={ref}
