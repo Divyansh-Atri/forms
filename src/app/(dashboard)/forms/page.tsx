@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { animate, AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { JsonImportDialog } from "@/components/forms/json-import-dialog"
+import { DeleteFormsDialog } from "@/components/forms/delete-forms-dialog"
 import { Eyebrow, trackSpotlight } from "@/components/fx"
 import { cn } from "@/lib/utils"
 import {
@@ -25,7 +26,11 @@ import {
  FileJson,
  Layers,
  Send,
- Sparkles
+ Sparkles,
+ ListChecks,
+ Trash2,
+ Check,
+ X
 } from "lucide-react"
 
 interface Form {
@@ -85,6 +90,19 @@ export default function FormsPage() {
  const [selectedStatus, setSelectedStatus] = useState<string | null>(null)
  const [openMenu, setOpenMenu] = useState<string | null>(null)
  const [showImportDialog, setShowImportDialog] = useState(false)
+
+ // Bulk select + delete
+ const [selecting, setSelecting] = useState(false)
+ const [selected, setSelected] = useState<Set<string>>(new Set())
+ const [pendingDelete, setPendingDelete] = useState<Form[] | null>(null)
+ const [deleting, setDeleting] = useState(false)
+ const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null)
+
+ useEffect(() => {
+ if (!notice) return
+ const t = setTimeout(() => setNotice(null), 4500)
+ return () => clearTimeout(t)
+ }, [notice])
 
  // Fetch forms from API
  useEffect(() => {
@@ -147,22 +165,68 @@ export default function FormsPage() {
  setOpenMenu(null)
  }
 
- const handleDelete = async (formId: string, title: string) => {
- if (!confirm(`Delete "${title}"?`)) return
+ // Selection only counts forms that are visible under the current filters,
+ // so a search can never hide something that is about to be deleted
+ const selectedForms = filteredForms.filter((f) => selected.has(f.id))
+ const allVisibleSelected = filteredForms.length > 0 && selectedForms.length === filteredForms.length
 
+ const exitSelecting = useCallback(() => {
+ setSelecting(false)
+ setSelected(new Set())
+ }, [])
+
+ const toggleSelected = (id: string) => {
+ setSelected((prev) => {
+ const next = new Set(prev)
+ if (next.has(id)) next.delete(id)
+ else next.add(id)
+ return next
+ })
+ }
+
+ const toggleSelectAll = () => {
+ setSelected(allVisibleSelected ? new Set() : new Set(filteredForms.map((f) => f.id)))
+ }
+
+ // Esc leaves selection mode (the delete dialog handles its own Esc)
+ useEffect(() => {
+ if (!selecting) return
+ const onKey = (e: KeyboardEvent) => {
+ if (e.key === "Escape" && !pendingDelete) exitSelecting()
+ }
+ window.addEventListener("keydown", onKey)
+ return () => window.removeEventListener("keydown", onKey)
+ }, [selecting, pendingDelete, exitSelecting])
+
+ const handleDelete = (form: Form) => {
+ setOpenMenu(null)
+ setPendingDelete([form])
+ }
+
+ const confirmDelete = async () => {
+ if (!pendingDelete) return
+ const ids = pendingDelete.map((f) => f.id)
+ setDeleting(true)
  try {
- const response = await fetch(`/api/forms/${formId}`, {
- method: 'DELETE',
+ const response = await fetch('/api/forms/bulk-delete', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({ ids }),
  })
  const result = await response.json()
- if (result.success) {
- setForms(forms.filter(f => f.id !== formId))
- alert('Form deleted')
+ if (!response.ok || !result.success) throw new Error(result.error || 'Failed to delete')
+
+ const gone = new Set(ids)
+ setForms((prev) => prev.filter((f) => !gone.has(f.id)))
+ setPendingDelete(null)
+ const n = result.data.forms as number
+ setNotice({ text: n === 1 ? 'Form deleted' : `${n} forms deleted` })
+ exitSelecting()
+ } catch (err) {
+ setNotice({ text: err instanceof Error ? err.message : 'Failed to delete', error: true })
+ } finally {
+ setDeleting(false)
  }
- } catch {
- alert('Failed to delete form')
- }
- setOpenMenu(null)
  }
 
  const handleTogglePublish = async (form: Form) => {
@@ -227,7 +291,7 @@ export default function FormsPage() {
  ]
 
  return (
- <div className="space-y-8">
+ <div className={cn("space-y-8", selecting && "pb-24")}>
  {/* Header */}
  <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5">
  <motion.div
@@ -320,6 +384,25 @@ export default function FormsPage() {
  )
  })}
  </div>
+ {forms.length > 0 && (
+ <button
+ onClick={() => {
+ if (selecting) return exitSelecting()
+ setOpenMenu(null)
+ setSelecting(true)
+ }}
+ aria-pressed={selecting}
+ className={cn(
+ "sm:ml-auto self-start sm:self-auto inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-all duration-300",
+ selecting
+ ? "border-violet/30 bg-violet/10 text-violet"
+ : "border-black/[0.06] bg-white/80 backdrop-blur text-muted-foreground hover:text-foreground hover:border-black/[0.12]"
+ )}
+ >
+ {selecting ? <X className="w-4 h-4" /> : <ListChecks className="w-4 h-4" />}
+ {selecting ? "Cancel" : "Select"}
+ </button>
+ )}
  </div>
 
  {/* Forms Grid */}
@@ -357,6 +440,7 @@ export default function FormsPage() {
  const status = statusConfig[form.status as keyof typeof statusConfig] || statusConfig.DRAFT
  const [c1, c2] = coverFor(form.id)
  const responseCount = form._count?.responses || 0
+ const isSelected = selecting && selected.has(form.id)
  return (
  <motion.div
  key={form.id}
@@ -370,9 +454,46 @@ export default function FormsPage() {
  "spotlight group relative rounded-2xl border border-black/[0.06] bg-white/90 backdrop-blur",
  "shadow-[0_1px_2px_rgba(16,16,32,0.04)] transition-[box-shadow,transform,border-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
  "hover:-translate-y-1 hover:border-violet/20 hover:shadow-[0_28px_56px_-28px_rgba(124,58,237,0.35)]",
- openMenu === form.id && "z-20"
+ openMenu === form.id && "z-20",
+ isSelected && "border-violet/50 shadow-[0_0_0_3px_rgba(124,58,237,0.18),0_28px_56px_-28px_rgba(124,58,237,0.45)] hover:border-violet/50"
  )}
  >
+ {/* In selection mode the whole card is one toggle, covering its links */}
+ {selecting && (
+ <button
+ type="button"
+ onClick={() => toggleSelected(form.id)}
+ aria-pressed={isSelected}
+ aria-label={`${isSelected ? "Deselect" : "Select"} ${form.title}`}
+ className="absolute inset-0 z-30 rounded-2xl cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet/25"
+ >
+ <motion.span
+ initial={{ scale: 0.4, opacity: 0 }}
+ animate={{ scale: 1, opacity: 1 }}
+ transition={{ type: "spring", stiffness: 520, damping: 26 }}
+ className={cn(
+ "absolute left-3 top-3 flex h-7 w-7 items-center justify-center rounded-full border-2 transition-colors duration-200",
+ isSelected
+ ? "border-violet bg-violet shadow-[0_6px_16px_-6px_rgba(124,58,237,0.9)]"
+ : "border-black/20 bg-white/90 backdrop-blur"
+ )}
+ >
+ <AnimatePresence>
+ {isSelected && (
+ <motion.span
+ initial={{ scale: 0, rotate: -45 }}
+ animate={{ scale: 1, rotate: 0 }}
+ exit={{ scale: 0 }}
+ transition={{ type: "spring", stiffness: 600, damping: 20 }}
+ >
+ <Check className="h-4 w-4 text-white" strokeWidth={3} />
+ </motion.span>
+ )}
+ </AnimatePresence>
+ </motion.span>
+ </button>
+ )}
+
  {/* Cover */}
  <Link href={`/forms/${form.id}`} className="block relative h-24 overflow-hidden rounded-t-2xl" aria-label={`Edit ${form.title}`}>
  <div className="absolute inset-0 bg-[#fbfbfd]" />
@@ -461,7 +582,7 @@ export default function FormsPage() {
  <div className="my-1 h-px bg-black/[0.06]" />
  <button
  className="block w-full text-left px-3 py-2 text-sm text-destructive rounded-lg hover:bg-destructive/10"
- onClick={() => handleDelete(form.id, form.title)}
+ onClick={() => handleDelete(form)}
  >
  Delete
  </button>
@@ -526,6 +647,70 @@ export default function FormsPage() {
  Tip: click a card&apos;s cover to jump straight into the editor
  </p>
  )}
+
+ {/* Bulk action bar (sits over the content area, clear of the sidebar) */}
+ <AnimatePresence>
+ {selecting && (
+ <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 flex justify-center px-4 lg:left-64">
+ <motion.div
+ initial={{ opacity: 0, y: 40, scale: 0.94 }}
+ animate={{ opacity: 1, y: 0, scale: 1 }}
+ exit={{ opacity: 0, y: 32, scale: 0.96, transition: { duration: 0.18 } }}
+ transition={{ type: "spring", stiffness: 380, damping: 30 }}
+ role="toolbar"
+ aria-label="Bulk actions"
+ className="pointer-events-auto flex w-full max-w-xl items-center gap-1.5 sm:gap-2 rounded-full bg-[#0b0b0f] p-1.5 pl-4 sm:pl-5 text-white shadow-[0_24px_60px_-20px_rgba(16,16,32,0.7),0_0_0_1px_rgba(255,255,255,0.06)_inset]"
+ >
+ <span className="flex-1 min-w-0 truncate text-sm">
+ <span className="font-semibold tabular-nums">{selectedForms.length}</span>
+ <span className="text-white/60"> selected</span>
+ </span>
+ <button
+ onClick={toggleSelectAll}
+ disabled={filteredForms.length === 0}
+ className="h-9 shrink-0 rounded-full px-3 sm:px-4 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+ >
+ {allVisibleSelected ? "Clear" : `Select all${filteredForms.length ? ` (${filteredForms.length})` : ""}`}
+ </button>
+ <button
+ onClick={() => setPendingDelete(selectedForms)}
+ disabled={selectedForms.length === 0}
+ className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-destructive px-3.5 sm:px-4 text-sm font-medium text-white transition-all hover:brightness-110 active:scale-[0.96] disabled:opacity-35 disabled:pointer-events-none"
+ >
+ <Trash2 className="h-4 w-4" />
+ Delete
+ </button>
+ </motion.div>
+ </div>
+ )}
+ </AnimatePresence>
+
+ <DeleteFormsDialog
+ forms={pendingDelete}
+ deleting={deleting}
+ onCancel={() => setPendingDelete(null)}
+ onConfirm={confirmDelete}
+ />
+
+ {/* Result toast */}
+ <AnimatePresence>
+ {notice && (
+ <motion.div
+ role="status"
+ initial={{ opacity: 0, y: -16, scale: 0.96 }}
+ animate={{ opacity: 1, y: 0, scale: 1 }}
+ exit={{ opacity: 0, y: -10, transition: { duration: 0.15 } }}
+ transition={{ type: "spring", stiffness: 380, damping: 28 }}
+ className={cn(
+ "fixed left-1/2 top-20 z-[80] -translate-x-1/2 flex items-center gap-2 rounded-full border bg-white px-4 py-2.5 text-sm font-medium shadow-[0_16px_40px_-16px_rgba(16,16,32,0.35)]",
+ notice.error ? "border-destructive/20 text-destructive" : "border-black/[0.06] text-foreground"
+ )}
+ >
+ {notice.error ? <X className="h-4 w-4" /> : <Check className="h-4 w-4 text-emerald-500" />}
+ {notice.text}
+ </motion.div>
+ )}
+ </AnimatePresence>
 
  {/* JSON Import Dialog */}
  {showImportDialog && (
