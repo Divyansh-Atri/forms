@@ -1,9 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
+import { AnimatePresence, motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
+import { ConfirmDeleteDialog } from "@/components/forms/delete-forms-dialog"
+import { cn } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
@@ -21,6 +24,8 @@ import {
  Loader2,
  X,
  Paperclip,
+ Check,
+ ChevronsUpDown,
 } from "lucide-react"
 import { asFileList, formatBytes, isImageType } from "@/lib/attachments"
 
@@ -144,8 +149,19 @@ export default function ResponsesPage() {
  const [responses, setResponses] = useState<Response[]>([])
  const [isLoading, setIsLoading] = useState(true)
  const [searchQuery, setSearchQuery] = useState("")
- const [selectedResponses, setSelectedResponses] = useState<string[]>([])
  const [viewingResponse, setViewingResponse] = useState<Response | null>(null)
+
+ // Selection. Shift+click (or "Select range": tap the first row, then the
+ // last) selects every response in between.
+ const [selected, setSelected] = useState<Set<string>>(new Set())
+ const [rangeStep, setRangeStep] = useState<'off' | 'first' | 'last'>('off')
+ const anchorRef = useRef<string | null>(null)
+ const headerBoxRef = useRef<HTMLInputElement>(null)
+
+ // Responses waiting for the delete confirmation
+ const [pendingDelete, setPendingDelete] = useState<string[] | null>(null)
+ const [deleting, setDeleting] = useState(false)
+ const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null)
 
  // Create question ID to title map
  const questionMap = new Map<string, string>()
@@ -205,23 +221,40 @@ export default function ResponsesPage() {
  }
  }, [formId])
 
- const handleDeleteResponse = async (responseId: string) => {
- if (!confirm("Are you sure you want to delete this response?")) return
+ // Deletes in rounds of this many (the server's limit per request)
+ const DELETE_BATCH = 500
 
+ const confirmDelete = async () => {
+ if (!pendingDelete) return
+ const ids = pendingDelete
+ const gone = new Set<string>()
+ setDeleting(true)
  try {
- const response = await fetch(`/api/responses/${responseId}`, {
- method: 'DELETE',
+ for (let i = 0; i < ids.length; i += DELETE_BATCH) {
+ const batch = ids.slice(i, i + DELETE_BATCH)
+ const res = await fetch('/api/responses/bulk-delete', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({ formId, ids: batch }),
  })
- const result = await response.json()
-
- if (result.success) {
- setResponses(responses.filter(r => r.id !== responseId))
- } else {
- alert(`Failed to delete response: ${result.error}`)
+ const result = await res.json().catch(() => ({}))
+ if (!res.ok || !result.success) throw new Error(result.error || 'Failed to delete')
+ batch.forEach((id) => gone.add(id))
  }
- } catch (error) {
- console.error('Delete response error:', error)
- alert("Failed to delete response")
+ setPendingDelete(null)
+ setNotice({ text: ids.length === 1 ? 'Response deleted' : `${ids.length} responses deleted` })
+ } catch (err) {
+ const reason = err instanceof Error ? err.message : 'Failed to delete'
+ // Keep the dialog open with whatever is left, so it can be retried
+ setPendingDelete(ids.filter((id) => !gone.has(id)))
+ setNotice({ text: gone.size > 0 ? `Deleted ${gone.size}, then: ${reason}` : reason, error: true })
+ } finally {
+ if (gone.size > 0) {
+ setResponses((prev) => prev.filter((r) => !gone.has(r.id)))
+ setSelected((prev) => new Set([...prev].filter((id) => !gone.has(id))))
+ setViewingResponse((v) => (v && gone.has(v.id) ? null : v))
+ }
+ setDeleting(false)
  }
  }
 
@@ -316,6 +349,110 @@ export default function ResponsesPage() {
  : 0,
  }
 
+ // Only rows visible under the current search count as selected, so a
+ // search never hides something that is about to be deleted
+ const visibleIds = filteredResponses.map((r) => r.id)
+ const selectedIds = visibleIds.filter((id) => selected.has(id))
+ const allSelected = visibleIds.length > 0 && selectedIds.length === visibleIds.length
+ const barOpen = selectedIds.length > 0 || rangeStep !== 'off'
+
+ const setRange = (fromId: string, toId: string, value: boolean) => {
+ const a = visibleIds.indexOf(fromId)
+ const b = visibleIds.indexOf(toId)
+ if (a < 0 || b < 0) return false
+ const span = visibleIds.slice(Math.min(a, b), Math.max(a, b) + 1)
+ setSelected((prev) => {
+ const next = new Set(prev)
+ span.forEach((id) => (value ? next.add(id) : next.delete(id)))
+ return next
+ })
+ return true
+ }
+
+ const handleRowSelect = (id: string, shift: boolean) => {
+ const anchor = anchorRef.current
+ if (rangeStep === 'first') {
+ anchorRef.current = id
+ setSelected((prev) => new Set(prev).add(id))
+ setRangeStep('last')
+ return
+ }
+ if (rangeStep === 'last' && anchor) {
+ setRange(anchor, id, true)
+ anchorRef.current = id
+ setRangeStep('off')
+ return
+ }
+ // Shift+click gives the whole span the state the clicked row is moving to
+ if (shift && anchor && anchor !== id && setRange(anchor, id, !selected.has(id))) {
+ anchorRef.current = id
+ return
+ }
+ setSelected((prev) => {
+ const next = new Set(prev)
+ if (next.has(id)) next.delete(id)
+ else next.add(id)
+ return next
+ })
+ anchorRef.current = id
+ }
+
+ const toggleAll = () => {
+ setSelected((prev) => {
+ const next = new Set(prev)
+ visibleIds.forEach((id) => (allSelected ? next.delete(id) : next.add(id)))
+ return next
+ })
+ }
+
+ const clearSelection = useCallback(() => {
+ setSelected(new Set())
+ setRangeStep('off')
+ anchorRef.current = null
+ }, [])
+
+ const startRange = () => {
+ if (rangeStep !== 'off') return setRangeStep('off')
+ setRangeStep('first')
+ }
+
+ // Esc closes the detail view, then leaves range mode / clears the selection
+ // (the delete dialog handles its own Esc)
+ useEffect(() => {
+ const onKey = (e: KeyboardEvent) => {
+ if (e.key !== 'Escape' || pendingDelete) return
+ if (viewingResponse) setViewingResponse(null)
+ else clearSelection()
+ }
+ window.addEventListener('keydown', onKey)
+ return () => window.removeEventListener('keydown', onKey)
+ }, [pendingDelete, viewingResponse, clearSelection])
+
+ useEffect(() => {
+ if (headerBoxRef.current) headerBoxRef.current.indeterminate = selectedIds.length > 0 && !allSelected
+ })
+
+ useEffect(() => {
+ if (!notice) return
+ const timer = setTimeout(() => setNotice(null), notice.error ? 6000 : 3000)
+ return () => clearTimeout(timer)
+ }, [notice])
+
+ // What the delete dialog says about the responses it is about to remove
+ const pendingSet = new Set(pendingDelete ?? [])
+ const pendingRows = responses.filter((r) => pendingSet.has(r.id))
+ const pendingFiles = pendingRows.reduce(
+ (n, r) => n + Object.values(r.data).reduce<number>((m, v) => m + (asFileList(v)?.length ?? 0), 0),
+ 0
+ )
+ const pendingSpan = pendingRows.length > 1
+ ? (() => {
+ const times = pendingRows.map((r) => new Date(r.createdAt).getTime())
+ const fmt = (t: number) => new Date(t).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+ return { from: fmt(Math.min(...times)), to: fmt(Math.max(...times)) }
+ })()
+ : null
+
  if (isLoading) {
  return (
  <div className="flex items-center justify-center h-64">
@@ -325,7 +462,7 @@ export default function ResponsesPage() {
  }
 
  return (
- <div className="space-y-6">
+ <div className={cn("space-y-6", barOpen && "pb-24")}>
  {/* Header */}
  <div className="flex items-center gap-4">
  <Link href={`/forms/${formId}`}>
@@ -407,8 +544,8 @@ export default function ResponsesPage() {
  </div>
 
  {/* Filters & Search */}
- <div className="flex items-center gap-4">
- <div className="relative flex-1 max-w-md">
+ <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+ <div className="relative flex-1 min-w-[12rem] max-w-md">
  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
  <Input
  placeholder="Search responses..."
@@ -425,7 +562,23 @@ export default function ResponsesPage() {
  <Calendar className="w-4 h-4 mr-2" />
  Date Range
  </Button>
+ <Button
+ variant="outline"
+ size="sm"
+ onClick={startRange}
+ disabled={filteredResponses.length === 0}
+ aria-pressed={rangeStep !== 'off'}
+ className={cn(rangeStep !== 'off' && "border-violet/50 bg-violet/10 text-violet")}
+ >
+ <ChevronsUpDown className="w-4 h-4 mr-2" />
+ Select range
+ </Button>
  </div>
+ {filteredResponses.length > 1 && (
+ <p className="hidden sm:block -mt-3 text-xs text-slate-400">
+ Tip: click a row to select it, then <span className="kbd">Shift</span>+click another to select everything in between.
+ </p>
+ )}
 
  {/* Responses Table */}
  <Card className="bg-white border-slate-200 shadow-sm overflow-hidden">
@@ -435,14 +588,13 @@ export default function ResponsesPage() {
  <tr className="border-b border-slate-100 bg-slate-50/50">
  <th className="text-left p-4 w-12">
  <input
+ ref={headerBoxRef}
  type="checkbox"
- className="rounded border-slate-300"
- checked={selectedResponses.length === filteredResponses.length && filteredResponses.length > 0}
- onChange={(e) =>
- setSelectedResponses(
- e.target.checked ? filteredResponses.map((r) => r.id) : []
- )
- }
+ aria-label={allSelected ? "Deselect all responses" : "Select all responses"}
+ className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-violet"
+ checked={allSelected}
+ disabled={visibleIds.length === 0}
+ onChange={toggleAll}
  />
  </th>
  <th className="text-left p-4 font-bold text-xs uppercase tracking-wider text-slate-500">
@@ -459,20 +611,31 @@ export default function ResponsesPage() {
  <tbody>
  {filteredResponses.map((response) => {
  const preview = getResponsePreview(response)
+ const isSelected = selected.has(response.id)
+ const isAnchor = rangeStep === 'last' && anchorRef.current === response.id
  return (
- <tr key={response.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
+ <tr
+ key={response.id}
+ data-response-row
+ // The whole row selects; the buttons on the right stop the click
+ onClick={(e) => handleRowSelect(response.id, e.shiftKey)}
+ // Stop Shift+click from highlighting text
+ onMouseDown={(e) => { if (e.shiftKey) e.preventDefault() }}
+ className={cn(
+ "border-b border-slate-50 last:border-0 cursor-pointer select-none transition-colors",
+ isSelected ? "bg-violet/[0.06] hover:bg-violet/10" : "hover:bg-slate-50/50",
+ isAnchor && "outline outline-2 -outline-offset-2 outline-violet/60",
+ rangeStep !== 'off' && !isSelected && "hover:bg-violet/[0.04]"
+ )}
+ >
  <td className="p-4">
  <input
  type="checkbox"
- className="rounded border-slate-300"
- checked={selectedResponses.includes(response.id)}
- onChange={(e) =>
- setSelectedResponses(
- e.target.checked
- ? [...selectedResponses, response.id]
- : selectedResponses.filter((id) => id !== response.id)
- )
- }
+ aria-label="Select response"
+ className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-violet"
+ checked={isSelected}
+ // The row's click handler does the toggling (it sees Shift)
+ onChange={() => {}}
  />
  </td>
  <td className="p-4">
@@ -495,11 +658,12 @@ export default function ResponsesPage() {
  <td className="p-4 text-slate-600 text-sm">
  {new Date(response.createdAt).toLocaleDateString()} at {new Date(response.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
  </td>
- <td className="p-4">
+ <td className="p-4" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
  <div className="flex items-center gap-1">
  <Button
  variant="ghost"
  size="icon"
+ aria-label="View response"
  className="h-8 w-8 text-slate-600 hover:text-violet hover:bg-violet/10"
  onClick={() => setViewingResponse(response)}
  >
@@ -508,8 +672,9 @@ export default function ResponsesPage() {
  <Button
  variant="ghost"
  size="icon"
+ aria-label="Delete response"
  className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
- onClick={() => handleDeleteResponse(response.id)}
+ onClick={() => setPendingDelete([response.id])}
  >
  <Trash2 className="w-4 h-4" />
  </Button>
@@ -567,6 +732,122 @@ export default function ResponsesPage() {
  </Card>
  </div>
  )}
+
+ {/* Bulk action bar (sits over the content area, clear of the sidebar) */}
+ <AnimatePresence>
+ {barOpen && (
+ <div className="pointer-events-none fixed inset-x-0 bottom-5 z-40 flex justify-center px-4 lg:left-64">
+ <motion.div
+ initial={{ opacity: 0, y: 40, scale: 0.94 }}
+ animate={{ opacity: 1, y: 0, scale: 1 }}
+ exit={{ opacity: 0, y: 32, scale: 0.96, transition: { duration: 0.18 } }}
+ transition={{ type: "spring", stiffness: 380, damping: 30 }}
+ role="toolbar"
+ aria-label="Selected responses"
+ className="pointer-events-auto flex w-full max-w-2xl items-center gap-1 sm:gap-2 rounded-full bg-[#0b0b0f] p-1.5 text-white shadow-[0_24px_60px_-20px_rgba(16,16,32,0.7),0_0_0_1px_rgba(255,255,255,0.06)_inset]"
+ >
+ <button
+ onClick={clearSelection}
+ aria-label="Clear selection"
+ className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+ >
+ <X className="h-4 w-4" />
+ </button>
+ <span className="flex-1 min-w-0 truncate text-sm" aria-live="polite">
+ {rangeStep === 'first' ? (
+ <span className="text-white/80">Tap the <b className="text-white">first</b> response</span>
+ ) : rangeStep === 'last' ? (
+ <span className="text-white/80">Now tap the <b className="text-white">last</b> one</span>
+ ) : (
+ <>
+ <span className="font-semibold tabular-nums">{selectedIds.length}</span>
+ <span className="text-white/60"> selected</span>
+ </>
+ )}
+ </span>
+ <button
+ onClick={startRange}
+ aria-pressed={rangeStep !== 'off'}
+ className={cn(
+ "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-2.5 sm:px-3.5 text-sm font-medium transition-colors",
+ rangeStep !== 'off' ? "bg-white/15 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"
+ )}
+ >
+ <ChevronsUpDown className="h-4 w-4" />
+ <span className="hidden sm:inline">{rangeStep !== 'off' ? "Cancel range" : "Range"}</span>
+ </button>
+ <button
+ onClick={toggleAll}
+ className="h-9 shrink-0 rounded-full px-2.5 sm:px-3.5 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+ >
+ {allSelected ? "None" : (
+ <>
+ <span className="sm:hidden">All</span>
+ <span className="hidden sm:inline">Select all ({visibleIds.length})</span>
+ </>
+ )}
+ </button>
+ <button
+ onClick={() => setPendingDelete(selectedIds)}
+ disabled={selectedIds.length === 0}
+ className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-destructive px-3.5 sm:px-4 text-sm font-medium text-white transition-all hover:brightness-110 active:scale-[0.96] disabled:opacity-35 disabled:pointer-events-none"
+ >
+ <Trash2 className="h-4 w-4" />
+ Delete
+ </button>
+ </motion.div>
+ </div>
+ )}
+ </AnimatePresence>
+
+ <ConfirmDeleteDialog
+ open={pendingRows.length > 0}
+ title={pendingRows.length === 1 ? "Delete this response?" : `Delete ${pendingRows.length} responses?`}
+ description={
+ <>
+ This can&apos;t be undone.
+ {pendingFiles > 0 && (
+ <> {pendingFiles === 1 ? "1 uploaded file goes" : `${pendingFiles} uploaded files go`} with {pendingRows.length === 1 ? "it" : "them"}.</>
+ )}
+ </>
+ }
+ list={pendingSpan && (
+ <div className="relative mt-5 rounded-2xl border border-black/[0.06] bg-[#fbfbfd] px-4 py-3 text-sm">
+ <p className="text-xs text-muted-foreground">Submitted between</p>
+ <p className="mt-0.5 font-medium text-foreground tabular-nums">
+ {pendingSpan.from} <span className="text-muted-foreground">and</span> {pendingSpan.to}
+ </p>
+ {pendingRows.length === responses.length && (
+ <p className="mt-2 text-xs font-medium text-destructive">This is every response to this form.</p>
+ )}
+ </div>
+ )}
+ requireWord={pendingRows.length > 1}
+ confirmLabel={pendingRows.length === 1 ? "Delete response" : `Delete ${pendingRows.length} responses`}
+ deleting={deleting}
+ onCancel={() => setPendingDelete(null)}
+ onConfirm={confirmDelete}
+ />
+
+ {/* Result toast */}
+ <AnimatePresence>
+ {notice && (
+ <motion.div
+ role="status"
+ initial={{ opacity: 0, y: -16, scale: 0.96 }}
+ animate={{ opacity: 1, y: 0, scale: 1 }}
+ exit={{ opacity: 0, y: -10, transition: { duration: 0.15 } }}
+ transition={{ type: "spring", stiffness: 380, damping: 28 }}
+ className={cn(
+ "fixed left-1/2 top-20 z-[80] -translate-x-1/2 flex items-center gap-2 rounded-full border bg-white px-4 py-2.5 text-sm font-medium shadow-[0_16px_40px_-16px_rgba(16,16,32,0.35)]",
+ notice.error ? "border-destructive/20 text-destructive" : "border-black/[0.06] text-foreground"
+ )}
+ >
+ {notice.error ? <X className="h-4 w-4" /> : <Check className="h-4 w-4 text-emerald-500" />}
+ {notice.text}
+ </motion.div>
+ )}
+ </AnimatePresence>
  </div>
  )
 }

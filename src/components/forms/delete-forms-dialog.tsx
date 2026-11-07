@@ -1,54 +1,45 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { AlertTriangle, Loader2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-export interface DeletableForm {
- id: string
- title: string
- _count?: { responses?: number }
-}
+// Deleting anything that can't be rebuilt asks the user to type this first
+const CONFIRM_WORD = "delete"
+const LISTED = 5
 
-interface DeleteFormsDialogProps {
- forms: DeletableForm[] | null
+interface ConfirmDeleteDialogProps {
+ open: boolean
+ title: string
+ description: ReactNode
+ /** Optional preview of what is being deleted */
+ list?: ReactNode
+ /** Ask the user to type "delete" before the button unlocks */
+ requireWord: boolean
+ confirmLabel: string
  deleting: boolean
  onCancel: () => void
  onConfirm: () => void
 }
 
-// Forms can be rebuilt; collected responses can't. So deleting anything that
-// has responses asks the user to type this word first.
-const CONFIRM_WORD = "delete"
-const LISTED = 5
-
-export function DeleteFormsDialog({ forms, deleting, onCancel, onConfirm }: DeleteFormsDialogProps) {
- return (
- <AnimatePresence>
- {forms && forms.length > 0 && (
- <DialogBody forms={forms} deleting={deleting} onCancel={onCancel} onConfirm={onConfirm} />
- )}
- </AnimatePresence>
- )
+export function ConfirmDeleteDialog(props: ConfirmDeleteDialogProps) {
+ return <AnimatePresence>{props.open && <DialogBody {...props} />}</AnimatePresence>
 }
 
-function DialogBody({ forms, deleting, onCancel, onConfirm }: DeleteFormsDialogProps & { forms: DeletableForm[] }) {
+function DialogBody({ title, description, list, requireWord, confirmLabel, deleting, onCancel, onConfirm }: ConfirmDeleteDialogProps) {
  const [typed, setTyped] = useState("")
  const inputRef = useRef<HTMLInputElement>(null)
  const cancelRef = useRef<HTMLButtonElement>(null)
 
- const responseCount = forms.reduce((sum, f) => sum + (f._count?.responses || 0), 0)
- const needsTyping = responseCount > 0
- const canDelete = !deleting && (!needsTyping || typed.trim().toLowerCase() === CONFIRM_WORD)
- const many = forms.length > 1
+ const canDelete = !deleting && (!requireWord || typed.trim().toLowerCase() === CONFIRM_WORD)
 
  useEffect(() => {
  // Focus the safe choice, or the confirm box when typing is required
- if (needsTyping) inputRef.current?.focus()
+ if (requireWord) inputRef.current?.focus()
  else cancelRef.current?.focus()
- }, [needsTyping])
+ }, [requireWord])
 
  useEffect(() => {
  const onKey = (e: KeyboardEvent) => {
@@ -73,8 +64,8 @@ function DialogBody({ forms, deleting, onCancel, onConfirm }: DeleteFormsDialogP
  <motion.div
  role="dialog"
  aria-modal="true"
- aria-labelledby="delete-forms-title"
- aria-describedby="delete-forms-desc"
+ aria-labelledby="delete-dialog-title"
+ aria-describedby="delete-dialog-desc"
  initial={{ opacity: 0, y: 24, scale: 0.96 }}
  animate={{ opacity: 1, y: 0, scale: 1 }}
  exit={{ opacity: 0, y: 12, scale: 0.98, transition: { duration: 0.15 } }}
@@ -93,40 +84,18 @@ function DialogBody({ forms, deleting, onCancel, onConfirm }: DeleteFormsDialogP
  <Trash2 className="h-5 w-5 text-destructive" />
  </motion.div>
  <div className="min-w-0 flex-1">
- <h2 id="delete-forms-title" className="text-lg font-semibold tracking-[-0.02em] text-foreground">
- {many ? `Delete ${forms.length} forms?` : `Delete "${forms[0].title}"?`}
+ <h2 id="delete-dialog-title" className="text-lg font-semibold tracking-[-0.02em] text-foreground">
+ {title}
  </h2>
- <p id="delete-forms-desc" className="mt-1 text-sm text-muted-foreground">
- {responseCount > 0 ? (
- <>
- This also deletes{" "}
- <span className="font-semibold text-foreground tabular-nums">{responseCount}</span>{" "}
- {responseCount === 1 ? "response" : "responses"}. This can&apos;t be undone.
- </>
- ) : (
- <>{many ? "None of them have" : "It has no"} responses. This can&apos;t be undone.</>
- )}
+ <p id="delete-dialog-desc" className="mt-1 text-sm text-muted-foreground">
+ {description}
  </p>
  </div>
  </div>
 
- {many && (
- <ul className="relative mt-5 max-h-44 space-y-1 overflow-y-auto rounded-2xl border border-black/[0.06] bg-[#fbfbfd] p-2">
- {forms.slice(0, LISTED).map((f) => (
- <li key={f.id} className="flex items-center justify-between gap-3 rounded-xl px-3 py-1.5 text-sm">
- <span className="truncate text-foreground">{f.title}</span>
- <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
- {f._count?.responses || 0} resp.
- </span>
- </li>
- ))}
- {forms.length > LISTED && (
- <li className="px-3 py-1.5 text-xs text-muted-foreground">and {forms.length - LISTED} more</li>
- )}
- </ul>
- )}
+ {list}
 
- {needsTyping && (
+ {requireWord && (
  <div className="relative mt-5">
  <label htmlFor="delete-confirm" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
  <AlertTriangle className="h-3.5 w-3.5 text-orange" />
@@ -161,10 +130,69 @@ function DialogBody({ forms, deleting, onCancel, onConfirm }: DeleteFormsDialogP
  )}
  >
  {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
- {deleting ? "Deleting…" : many ? `Delete ${forms.length} forms` : "Delete form"}
+ {deleting ? "Deleting…" : confirmLabel}
  </button>
  </div>
  </motion.div>
  </motion.div>
+ )
+}
+
+export interface DeletableForm {
+ id: string
+ title: string
+ _count?: { responses?: number }
+}
+
+interface DeleteFormsDialogProps {
+ forms: DeletableForm[] | null
+ deleting: boolean
+ onCancel: () => void
+ onConfirm: () => void
+}
+
+// Forms can be rebuilt; collected responses can't. So deleting anything that
+// has responses asks the user to type "delete" first.
+export function DeleteFormsDialog({ forms, deleting, onCancel, onConfirm }: DeleteFormsDialogProps) {
+ const list = forms ?? []
+ const responseCount = list.reduce((sum, f) => sum + (f._count?.responses || 0), 0)
+ const many = list.length > 1
+
+ return (
+ <ConfirmDeleteDialog
+ open={list.length > 0}
+ title={many ? `Delete ${list.length} forms?` : `Delete "${list[0]?.title}"?`}
+ description={
+ responseCount > 0 ? (
+ <>
+ This also deletes{" "}
+ <span className="font-semibold text-foreground tabular-nums">{responseCount}</span>{" "}
+ {responseCount === 1 ? "response" : "responses"}. This can&apos;t be undone.
+ </>
+ ) : (
+ <>{many ? "None of them have" : "It has no"} responses. This can&apos;t be undone.</>
+ )
+ }
+ list={many && (
+ <ul className="relative mt-5 max-h-44 space-y-1 overflow-y-auto rounded-2xl border border-black/[0.06] bg-[#fbfbfd] p-2">
+ {list.slice(0, LISTED).map((f) => (
+ <li key={f.id} className="flex items-center justify-between gap-3 rounded-xl px-3 py-1.5 text-sm">
+ <span className="truncate text-foreground">{f.title}</span>
+ <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
+ {f._count?.responses || 0} resp.
+ </span>
+ </li>
+ ))}
+ {list.length > LISTED && (
+ <li className="px-3 py-1.5 text-xs text-muted-foreground">and {list.length - LISTED} more</li>
+ )}
+ </ul>
+ )}
+ requireWord={responseCount > 0}
+ confirmLabel={many ? `Delete ${list.length} forms` : "Delete form"}
+ deleting={deleting}
+ onCancel={onCancel}
+ onConfirm={onConfirm}
+ />
  )
 }
